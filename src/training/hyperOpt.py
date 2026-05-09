@@ -6,11 +6,11 @@ import pandas
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import root_mean_squared_error
 
-from notebook.eda import get_processed_data
+from src.notebook.eda import get_processed_data
 
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-mlflow.set_tracking_uri("http://127.0.0.1:5000")
+mlflow.set_tracking_uri("http://127.0.0.1:8080")
 mlflow.set_experiment("Air Pollution Prediction Hyperopt Experiment")
 
 

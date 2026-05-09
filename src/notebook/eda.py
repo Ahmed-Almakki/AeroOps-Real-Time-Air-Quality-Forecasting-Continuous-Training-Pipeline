@@ -40,7 +40,7 @@ def get_processed_data(file: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFr
         # current_dir = Path(os.getcwd())
         # file_path = current_dir / '../archive' / file
         current_dir = Path(__file__).parent
-        file_path = current_dir / '../archive' / file
+        file_path = current_dir / 'archive' / file
 
         if not file_path.exists():
             logging.error(f"File {file_path} does not exist.")
