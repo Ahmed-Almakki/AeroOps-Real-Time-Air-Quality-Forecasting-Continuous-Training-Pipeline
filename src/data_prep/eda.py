@@ -1,7 +1,5 @@
 import pandas as pd
-import numpy as np
 from pathlib import Path
-import os
 import logging
 
 
@@ -38,15 +36,18 @@ def get_processed_data(file: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFr
     """
     try:
         # current_dir = Path(os.getcwd())
-        # file_path = current_dir / '../archive' / file
-        current_dir = Path(__file__).parent
-        file_path = current_dir / 'archive' / file
+        # file_path = current_dir / '../data' / file
+        project_root = Path(__file__).resolve().parent.parent.parent
+        file_path = project_root / 'data' / file
+        logging.info(f"Loading data...")
 
         if not file_path.exists():
             logging.error(f"File {file_path} does not exist.")
             return None, None, None
+        
         df = pd.read_csv(file_path)
         df = df.drop(columns=['No', 'station'])
+        df = pd.get_dummies(df, columns=['wd'])
 
         df_train, df_test = split_dataset(df)
         

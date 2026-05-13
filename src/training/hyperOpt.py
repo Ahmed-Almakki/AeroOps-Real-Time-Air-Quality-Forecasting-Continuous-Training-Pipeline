@@ -1,12 +1,13 @@
-from hyperopt import STATUS_OK, Trials, fmin, hp, tpe
+from hyperopt import STATUS_OK, Trials, fmin, hp, tpe, STATUS_FAIL
 from hyperopt.pyll import scope
 import logging
 import mlflow
 import pandas
+import requests
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import root_mean_squared_error
 
-from src.notebook.eda import get_processed_data
+from src.data_prep.eda import get_processed_data
 
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -24,8 +25,8 @@ def dataframe_selcetion(df: pandas.DataFrame) -> pandas.DataFrame:
         and the target variable (Y_train).
     """
     try:
-        Y_train = df['pm2.5']
-        X_train = df.drop(columns=['pm2.5'])
+        Y_train = df['PM2.5']
+        X_train = df.drop(columns=['PM2.5'])
 
         logging.info("Dataframe selection successful.")
         return X_train, Y_train
@@ -44,10 +45,11 @@ def run_optmization(num_trials: int, file: str) -> None:
         None
     """
     try:
+        logging.info(f"Starting Processing data from file: {file}")
         df_train, df_b, df_test = get_processed_data(file)
         
-        Y_test = df_test['pm2.5']
-        X_test = df_test.drop(columns=['pm2.5'])
+        Y_test = df_test['PM2.5']
+        X_test = df_test.drop(columns=['PM2.5'])
 
         for df in [df_train, df_b]:
             X_train, Y_train = dataframe_selcetion(df)
@@ -56,6 +58,7 @@ def run_optmization(num_trials: int, file: str) -> None:
                 continue
 
             def objective(params):
+                logging.info(f"Running trials...")
                 try:
                     with mlflow.start_run():
                         mlflow.log_params(params)
@@ -65,10 +68,27 @@ def run_optmization(num_trials: int, file: str) -> None:
                         rmse = root_mean_squared_error(Y_test, preds)
                         mlflow.log_metric("rmse", rmse)
                         mlflow.sklearn.log_model(model, "model")
+
+                    logging.info(f"Trial completed with RMSE: {rmse}")
                     return {'loss': rmse, 'status': STATUS_OK}
+                
+                # Stack execption so the one we can ignore goes on but the Fatal ones stop the sytem to save resources and time
+
+                except (ValueError, KeyError) as e:
+                    logging.critical(f"FATAL DATA ERROR: {e}. Cannot continue training.")
+                    raise e  # KILLS THE SCRIP
+
+                except requests.exceptions.ConnectionError as e:
+                    logging.warning(f"Could not connect to MLflow: {e}. Skipping trial.")
+                    return {'loss': float('inf'), 'status': STATUS_FAIL}
+                
+                except MemoryError as e:
+                    logging.warning(f"Memory error during model training: {e}. Skipping trial.")
+                    return {'loss': float('inf'), 'status': STATUS_FAIL}
+                
                 except Exception as e:
                     logging.error(f"Error occurred during objective function execution: {e}")
-                    return {'loss': float('inf'), 'status': STATUS_OK}
+                    return {'loss': float('inf'), 'status': STATUS_FAIL}
             
             space = {
                 'n_estimators': scope.int(hp.quniform('n_estimators', 50, 200, 10)),
@@ -90,7 +110,6 @@ def run_optmization(num_trials: int, file: str) -> None:
             
     except Exception as e:
         logging.error("Error occurred while processing data: %s", str(e))
-        logging.error("File not found")
         return
 
 
