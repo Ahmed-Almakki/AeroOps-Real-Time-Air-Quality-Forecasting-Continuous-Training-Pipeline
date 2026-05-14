@@ -1,0 +1,7 @@
+pytest==9.0.2
+evidently==0.7.21
+prefect==3.6.22
+black==26.3.1
+scikit-learn==1.8.0
+pandas==2.3.3
+mlflow==3.11.1
