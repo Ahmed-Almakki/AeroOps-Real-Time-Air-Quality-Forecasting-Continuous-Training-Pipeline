@@ -1,7 +1,9 @@
+from dotenv import load_dotenv
 from hyperopt import STATUS_OK, Trials, fmin, hp, tpe, STATUS_FAIL
 from hyperopt.pyll import scope
 import logging
 import mlflow
+import os
 import pandas
 import requests
 from sklearn.ensemble import RandomForestRegressor
@@ -9,10 +11,12 @@ from sklearn.metrics import root_mean_squared_error
 
 from src.data_prep.eda import get_processed_data
 
+load_dotenv()
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-mlflow.set_tracking_uri("http://127.0.0.1:8080")
-mlflow.set_experiment("Air Pollution Prediction Hyperopt Experiment")
+
+mlflow.set_tracking_uri(os.getenv('MLFLOW_SERVER'))
+mlflow.set_experiment(os.getenv('MLFLOW_EXPERIMENT_NAME'))
 
 
 def dataframe_selcetion(df: pandas.DataFrame) -> pandas.DataFrame:
