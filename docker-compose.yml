@@ -11,6 +11,12 @@ services:
       - "5433:5432"
     volumes:
       - DB_data:/var/lib/postgresql/data
+
+  adminer:
+    image: adminer:standalone
+    restart: always
+    ports:
+      - 8080:8080
         
   mlflow_air:
     image: ghcr.io/mlflow/mlflow:latest
