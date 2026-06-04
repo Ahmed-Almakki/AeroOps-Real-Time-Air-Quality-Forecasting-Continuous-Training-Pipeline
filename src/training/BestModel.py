@@ -1,6 +1,5 @@
 import logging
 import os
-from xmlrpc import client
 from dotenv import load_dotenv
 import mlflow
 from mlflow import MlflowClient
