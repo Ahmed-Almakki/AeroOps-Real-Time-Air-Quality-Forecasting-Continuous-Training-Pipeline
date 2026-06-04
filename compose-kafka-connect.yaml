@@ -1,0 +1,42 @@
+services:
+  connect-1:
+    image: confluentinc/cp-kafka-connect:8.1.3
+    container_name: connect-1
+    ports:
+      - "8083:8083"
+    restart: always
+    hostname: connect-1
+    environment:
+      CONNECT_BOOTSTRAP_SERVERS: ${kafka_bootstrap_servers}
+      CONNECT_GROUP_ID: "connect-cluster"
+      CONNECT_CONFIG_STORAGE_TOPIC: "connect-configs"
+      CONNECT_OFFSET_STORAGE_TOPIC: "connect-offsets"
+      CONNECT_STATUS_STORAGE_TOPIC: "connect-status"
+
+      CONNECT_REPLICATION_FACTOR: 1
+      CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 1
+
+      CONNECT_KEY_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
+      CONNECT_VALUE_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
+
+      CONNECT_REST_ADVERTISED_HOST_NAME: "connect-1"
+
+      CONNECT_PLUGIN_PATH: "/usr/share/java,/usr/share/confluent-hub-components"
+
+      CONNECT_LOG4J_ROOT_LOGLEVEL: "INFO"
+      CONNECT_LOG4J_LOGGERS: "org.apache.kafka.connect.runtime.rest=WARN,org.apache.kafka.connect.runtime.distributed=WARN,org.apache.kafka.connect.runtime.Worker=WARN,org.apache.kafka.connect.runtime.errors=ERROR,org.apache.kafka.connect.runtime.rest.errors=ERROR"
+      CONNECT_LOG4J_APPENDER_STDOUT_LAYOUT_CONVERSIONPATTERN: "%d{ISO8601} %-5p [%t] %c: %m%n"
+
+      CONNECT_SECURITY_PROTOCOL: PLAINTEXT
+
+    command:
+      - bash 
+      - -c
+      - |
+        echo "Installing connectors..."
+        confluent-hub install --no-prompt confluentinc/kafka-connect-jdbc:10.0.0
+        echo "Connectors installed, starting Kafka Connect worker..."
+        /etc/confluent/docker/run &
+        sleep infinity

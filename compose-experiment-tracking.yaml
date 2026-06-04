@@ -8,7 +8,8 @@ services:
     volumes:
       - mlflow_artifact_volume:/mlflow/artifacts
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
     command: >
       mlflow server 
@@ -18,6 +19,6 @@ services:
       --serve-artifacts
       --host 0.0.0.0
       --port 5000
-      
+
 volumes:
   mlflow_artifact_volume:

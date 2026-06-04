@@ -5,8 +5,17 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+    
     ports:
       - "5433:5432"
+    
+    healthcheck:
+      # Using $$ to reference the container's internal environment variables
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
     volumes:
       - DB_data:/var/lib/postgresql/data
 

@@ -1,6 +1,7 @@
 name: 'Air_Quality_System'
 
 include:
-  - compose-kafka.yaml
-  - compose-experiment-tracking.yaml
   - compose-db.yaml
+  - compose-kafka.yaml
+  - compose-kafka-connect.yaml
+  - compose-experiment-tracking.yaml
