@@ -15,6 +15,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    command: ["postgres", "-c", "wal_level=logical"]
 
     volumes:
       - DB_data:/var/lib/postgresql/data
