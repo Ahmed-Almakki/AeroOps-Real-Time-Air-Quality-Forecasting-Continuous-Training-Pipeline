@@ -42,3 +42,36 @@ because mlflow is inside container and my python script is in my local pc, i hav
 ```
 * this line make MLFLOW SERVER as middleman, your script pload the model to the server over HTTP (8080) and server will place the model inside the container it self and the container is already mounted to my volume so here the artifacs is presistant even if we stop and run the container again and MLFLOW know where the artifact exists
 * in production better to use AWS S3, GCP Storage, Azure Blob
+
+## kafka Connect Configuration
+### plugin.name inside config
+* when you insert or update or delete data in PostgresSQL, Postgres writes that change down in a secret internal diary called the WAL (Write-Ahead Log)
+* Kafka Cannot read Postgres internal diary direclty, it needs a translator "plugin"
+* if you didn't use this configuration then the default behaviour happen which is the batch mode
+* when 10 rows updated the plugin translate these 10 rows into single batch and hands it to Debezium
+* The problem when you update/create 10 million rows, here you will face " Out of Memory "
+* **Soulution**:
+* use Streaming Mode instead of Batch Mode
+* either the built in inside Postgres " **pgoutput** " the one i already used
+* or downlaod a third party one like " **wal2json_streaming** "
+## slot.name & slot.drop.on.stop
+* Postgres allows you to have multiple bookmarks at the same time
+* These two give you the feature of bookmarking your internal diary WAL, it tells kafka connect exactly which change Debezium has already read and which ones it hasn't
+* **slot.name** -> just make you name your bookmark if you don't use it by default it called debezium, you usually use it when you have multiple different Debezium connectors against the exact same Postgres database
+* **slot.drop.on.stop** -> either true or false, by default is false which means if server crash it doesn't delete the WAL because it assume that it will eventually come back online so it resume from where it stop
+* But if it set to ture, if crash immediatly delet the bookmarks, so this is used while developing for testing, becuase you don't want every time adding feature or changing feature or continuo developing to work from where it stop becasue during developing you stop alot
+## publication.name
+* If you choose the **pgoutput** then you have to use this configuration
+* If you leave it empty, Debizum will connect to Postgres and say " hey, create a brand new channel called **dez_publication** and broadcast every single table in the entire database on it", for most people this is excatly what they want
+* The Custom behavior: let's say your database has 50 tables, but you only want kafka to know about the **user** and **order** tables. You can log into your Postgres database yourself and type a SQL command to create a custom channel **CREATE PUBLICATION my_custom_channel FOR TABLE user, order;**, then use this channle as the publication.name, now debizum will ignore the other 48 tables
+## include/exclude [schema - table - columns]:
+* You ether choose include or exclude not use both
+* **A - Schema:**
+* put entire schema or exclude it if you have more than one schema
+* normally you have one schema which is **public** and it is automatically created by postgress, and the use of schema is when you need seperation or control over the database for example if you want espicific department to have specific tables in dtatabase you can create "public - accounting -engineers" meaning there is tables are for accountants and other for engineer and so on
+* **B - Table:**
+* include or exclud tables , seperated by comma
+``` JSON
+"table.include.list": "public.your_new_table"
+```
+* **C - Columns**

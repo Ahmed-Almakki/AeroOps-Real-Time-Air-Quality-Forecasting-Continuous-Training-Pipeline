@@ -1,0 +1,22 @@
+{
+    "name": "postgres_source",
+    "config": {
+        "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+        "tasks.max": "1",
+        "plugin.name": "pgoutput",
+        "slot.drop.on.stop": "true",
+        "database.hostname": "db",
+        "database.port": "5432",
+        
+        "database.user": "${env:POSTGRES_USER}",
+        "database.password": "${env:POSTGRES_PASSWORD}",
+        "database.dbname": "${env:POSTGRES_DB}",
+        
+        "topic.prefix": "pg",
+        "table.include.list": "public.air_pollution",
+        "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "key.converter.schemas.enable": "true",
+        "value.converter.schemas.enable": "true"
+    }
+}
