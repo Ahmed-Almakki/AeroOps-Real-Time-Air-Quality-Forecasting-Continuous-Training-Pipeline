@@ -6,6 +6,10 @@ services:
       - "8083:8083"
     restart: always
     hostname: connect-1
+    depends_on:
+      kafka:
+        condition: service_started
+        
     environment:
       CONNECT_BOOTSTRAP_SERVERS: ${kafka_bootstrap_servers}
       CONNECT_GROUP_ID: "connect-cluster"
@@ -29,6 +33,15 @@ services:
       CONNECT_LOG4J_LOGGERS: "org.apache.kafka.connect.runtime.rest=WARN,org.apache.kafka.connect.runtime.distributed=WARN,org.apache.kafka.connect.runtime.Worker=WARN,org.apache.kafka.connect.runtime.errors=ERROR,org.apache.kafka.connect.runtime.rest.errors=ERROR"
       CONNECT_LOG4J_APPENDER_STDOUT_LAYOUT_CONVERSIONPATTERN: "%d{ISO8601} %-5p [%t] %c: %m%n"
 
+
+      CONNECT_CONFIG_PROVIDERS: "env"
+      CONNECT_CONFIG_PROVIDERS_ENV_CLASS: "org.apache.kafka.common.config.provider.EnvVarConfigProvider"
+      
+      # 3. Pass the database secrets through the wall into this container
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+
       CONNECT_SECURITY_PROTOCOL: PLAINTEXT
 
     command:
@@ -36,7 +49,6 @@ services:
       - -c
       - |
         echo "Installing connectors..."
-        confluent-hub install --no-prompt debezium/debezium-connector-postgresql:2.7.3
+        confluent-hub install --no-prompt debezium/debezium-connector-postgresql:latest
         echo "Connectors installed, starting Kafka Connect worker..."
-        /etc/confluent/docker/run &
-        sleep infinity
+        /etc/confluent/docker/run
