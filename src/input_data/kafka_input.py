@@ -21,27 +21,26 @@ class KafkaInput:
         self.consumer = Consumer(conf)
         self.consumer.subscribe([topic])
 
-    def consume(self):
-        """Continuously poll for messages from the Kafka topic, process them, and commit offsets."""
-        try:
-            while True:
-                msg = self.consumer.poll(1.0)
-                if msg is None:
-                    continue
-                if msg.error():
-                    logging.error(f"Error occurred while consuming message: {msg.error()}")
-                    if msg.error().code() == KafkaError._PARTITION_EOF:
-                        logging.info(f"End of partition reached {msg.topic()} [{msg.partition()}]")
-                    else:
-                        raise KafkaException(msg.error())
-                else:
-                    data = json.loads(msg.value().decode('utf-8'))
-                    logging.info(f"Received message: {data}")
-                    self.consumer.commit(msg)
-                    logging.info("Offset committed successfully.")
-                    return data
-        except KeyboardInterrupt:
-            logging.info("Kafka consumer interrupted by user.")
-            pass
-        finally:
-            self.consumer.close()
+    def get_single_message(self):
+        """Get a single message from the Kafka topic."""
+        
+        msg = self.consumer.poll(1.0)
+        if msg is None:
+            return None
+        if msg.error():
+            logging.error(f"Error occurred while consuming message: {msg.error()}")
+            if msg.error().code() == KafkaError._PARTITION_EOF:
+                logging.info(f"End of partition reached {msg.topic()} [{msg.partition()}]")
+            else:
+                logging.error(f"Error occurred while consuming message: {msg.error()}")
+                raise KafkaException(msg.error())
+        else:
+            data = json.loads(msg.value().decode('utf-8'))
+            logging.info(f"Received message successfully")
+            self.consumer.commit(msg)
+            logging.info("Offset committed successfully.")
+            return data
+        
+    def close(self):
+        """Close the Kafka consumer."""
+        self.consumer.close()
