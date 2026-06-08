@@ -75,3 +75,6 @@ because mlflow is inside container and my python script is in my local pc, i hav
 "table.include.list": "public.your_new_table"
 ```
 * **C - Columns**
+### the name of the topic:
+* topic.prefexi + schema_name + table_name
+* In this project is called => **pg.public.air_pollution**

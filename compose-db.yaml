@@ -15,6 +15,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    # becuase when sending connector configuration to connect, the WAL level should be logical to capture changes in the database
     command: ["postgres", "-c", "wal_level=logical"]
 
     volumes:
