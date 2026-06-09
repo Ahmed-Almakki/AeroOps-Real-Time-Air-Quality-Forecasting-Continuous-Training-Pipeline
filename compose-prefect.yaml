@@ -1,0 +1,46 @@
+services:
+  prefect_server:
+    image: prefecthq/prefect:3-latest
+    environment:
+    # http://prefect-server:4200/api instead of localhost becasue localhost will refer to inside th docker container not the host machine
+      - PREFECT_API_URL="${PREFECT_API_URL}"
+      # 0.0.0.0 to allow access from outside the container
+    command: prefect server start --host 0.0.0.0
+    ports:
+      - "4200:4200"
+    networks:
+      - prefect_network
+
+  prefect-pool:
+    image: prefecthq/prefect:3-latest
+    environment:
+      - PREFECT_API_URL="${PREFECT_API_URL}"
+    volumes:
+      - ./:/opt/prefect/flows
+    working_dir: /opt/prefect/flows
+    command: >
+      bash -c "
+      prefect pool create local-pool --concurrency-limit 1 --type process || true &&
+      python -m src.pipeline.inference_flow
+      "
+    networks:
+      - prefect_network
+    depends_on:
+      - prefect_server
+
+
+  prefect-worker:
+    image: prefecthq/prefect:3-latest
+    environment:
+      - PREFECT_API_URL="${PREFECT_API_URL}"
+    command: prefect worker start --pool local-pool
+    networks:
+      - prefect_network
+    depends_on:
+      - prefect-pool
+
+networks:
+  prefect_network:
+    driver: bridge
+
+  
