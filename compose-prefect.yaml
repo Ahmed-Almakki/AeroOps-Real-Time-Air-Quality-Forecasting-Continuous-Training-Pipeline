@@ -8,6 +8,12 @@ services:
     command: prefect server start --host 0.0.0.0
     ports:
       - "4200:4200"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4200/api/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     networks:
       - prefect_network
 
@@ -21,12 +27,13 @@ services:
     command: >
       bash -c "
       prefect pool create local-pool --concurrency-limit 1 --type process || true &&
-      python -m src.pipeline.inference_flow
+      python -m src.pipeline.drift_check.py
       "
     networks:
       - prefect_network
     depends_on:
-      - prefect_server
+      prefect_server:
+        condition: service_healthy  
 
 
   prefect-worker:
@@ -37,7 +44,8 @@ services:
     networks:
       - prefect_network
     depends_on:
-      - prefect-pool
+      prefect-pool:
+        condition: service_completed_successfully
 
 networks:
   prefect_network:

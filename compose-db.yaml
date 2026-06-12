@@ -8,6 +8,9 @@ services:
     
     ports:
       - "5433:5432"
+
+    networks:
+      - prefect_network
     
     healthcheck:
       # Using $$ to reference the container's internal environment variables
@@ -26,6 +29,12 @@ services:
     restart: always
     ports:
       - 8081:8080
+    networks:
+      - prefect_network
 
 volumes:
   DB_data:
+
+networks:
+  prefect_network:
+    driver: bridge
