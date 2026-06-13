@@ -70,7 +70,7 @@ def data_check(current_data: pd.DataFrame, reference_data: pd.DataFrame):
 
 
 @task(name="check_for_drift", retries=3, retry_delay_seconds=10)
-def check_for_drift(drift_report: dict):
+def check_for_drift(drift_report: dict) -> bool:
     try:
         threshold = 0.5
         metrics = drift_report['metrics']
@@ -78,6 +78,7 @@ def check_for_drift(drift_report: dict):
         drift_check = metrics[0]['value']['share']
         if drift_check >= threshold:
             logger.warning("Significant data drift detected!")
+
             for item in metrics[1:]:
                 config = item.get('config', {})
                 value = item.get('value')
@@ -87,17 +88,18 @@ def check_for_drift(drift_report: dict):
                     col_threshold = config.get('threshold', 0.0)
                     col_method = config.get('method', 'N/A')
                 
-                if value >= col_threshold:
+                if value < col_threshold:
                     logger.warning(f"Drifted Coulmn: {col_name}, threshold: {col_threshold} method: {col_method}")
-                
-        else:
-            logger.info(f"No significant data drift detected. drift_check_percentage: {drift_check * 100}%")
+            return True                
+        
+        logger.info(f"No significant data drift detected. drift_check_percentage: {drift_check * 100}%")
+        return False
     except Exception as e:
         logger.error(f"Error checking for drift: {e}")
         raise
 
 @task(name="check_model_performance")
-def model_performance_check():
+def model_performance_check(drift: bool):
     logger.info("Checking model performance...")
     # (Your code to check model performance using MLflow metrics)
     logger.info("Model performance check completed successfully.")
