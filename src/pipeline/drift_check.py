@@ -1,6 +1,6 @@
 from dotenv import load_dotenv
-from evidently import Dataset, DataDefinition, Report
-from evidently.presets import DataDriftPreset
+from evidently import Dataset, DataDefinition, Report, Regression
+from evidently.presets import DataDriftPreset, RegressionPreset
 import os
 import pandas as pd
 from prefect import flow, task, get_run_logger
@@ -10,13 +10,13 @@ from sqlalchemy.orm import Session
 
 
 load_dotenv()
-logger = get_run_logger()
 engine = create_engine(f"postgresql://{os.getenv('POSTGRES_USER')}:{os.getenv('POSTGRES_PASSWORD')}@{os.getenv('POSTGRES_HOST')}/{os.getenv('POSTGRES_DB')}")
 
 
 @task(name="read_data_from_db", retries=3, retry_delay_seconds=10)
-def read_data_from_db():
+def read_data_from_db() -> tuple[pd.DataFrame, pd.DataFrame]:
     try:
+        logger = get_run_logger()
         logger.info("Fetching the last 24 rows of sensor data from the Database...")
         with Session(engine) as session:
             result = session.execute(f"""
@@ -42,14 +42,15 @@ def read_data_from_db():
         raise
 
 
-@task(name="result_of_data_checks", retries=3, retry_delay_seconds=10)
-def data_check(current_data: pd.DataFrame, reference_data: pd.DataFrame):
+@task(name="data_report", retries=3, retry_delay_seconds=10)
+def data_report(current_data: pd.DataFrame, reference_data: pd.DataFrame) -> dict:
     try:
+        logger = get_run_logger()
         logger.info("Checking for drift in data...")
         
         schema = DataDefinition(
-            numerical_features=["SO2", "NO2", "CO", "O3", "TEMP", "PRES", "DEWP", "WSPM"],
-            categorical_features=["wd"]
+            numerical_columns=["SO2", "NO2", "CO", "O3", "TEMP", "PRES", "DEWP", "WSPM"],
+            categorical_columns=["wd"]
         )
         
         current_eval = Dataset.from_pandas(current_data, data_definition=schema)
@@ -69,9 +70,11 @@ def data_check(current_data: pd.DataFrame, reference_data: pd.DataFrame):
         raise
 
 
-@task(name="check_for_drift", retries=3, retry_delay_seconds=10)
+@task(name="check_for_data_drift", retries=3, retry_delay_seconds=10)
 def check_for_drift(drift_report: dict) -> bool:
     try:
+        logger = get_run_logger()
+        logger.info("Starting checking for data drift...")
         threshold = 0.5
         metrics = drift_report['metrics']
 
@@ -98,24 +101,85 @@ def check_for_drift(drift_report: dict) -> bool:
         logger.error(f"Error checking for drift: {e}")
         raise
 
-@task(name="check_model_performance")
-def model_performance_check(drift: bool):
-    logger.info("Checking model performance...")
-    # (Your code to check model performance using MLflow metrics)
-    logger.info("Model performance check completed successfully.")
+
+@task(name="model_performance_report", retries=3, retry_delay_seconds=10)
+def model_performance_report(current_data: pd.DataFrame, refrence_data: pd.DataFrame) -> dict:
+    try:
+        logger = get_run_logger()
+        logger.info("Checking model performance...")
+        schema = DataDefinition(
+            numerical_columns=["SO2", "NO2", "CO", "O3", "TEMP", "PRES", "DEWP", "WSPM"],
+            categorical_columns=["wd"],
+            regression=[Regression(target="PM2.5", prediction="prediction")]
+        )
+
+        cur_data = Dataset.from_pandas(current_data, data_definition=schema)
+        ref_data = Dataset.from_pandas(refrence_data, data_definition=schema)
+
+        report = Report([
+            RegressionPreset()
+        ], includ_test=True)
+        model_performance_eval = report.run(current_data=cur_data, reference_data=ref_data)
+
+        model_performance_eval.save_html(f"model_performance_check_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.html")
+        logger.info("Model performance check completed successfully.")
+
+        return model_performance_eval.dict()
+    except Exception as e:
+        logger.error(f"performance check failed due to: {e}")
+        raise
+
+@task(name="model_performance_check", retries=3, retry_delay_seconds=10)
+def model_performance_check(performance: dict) -> bool: 
+    try:
+        logger = get_run_logger()
+        logger.info('Start checking model performance...')
+        tests = performance['tests']
+        test_result = []
+        for item in tests:
+            test_name = item['name']
+            result = 1 if item['status'].value == 'FAIL' else 0
+            test_result.append((test_name, result))
+
+        if sum(t[1] for t in test_result) == 0:
+            logger.info("Model Performance Still Good")
+            return False
+        for name, _ in test_result:
+             logger.warning(f"The test: {name} Failed")
+        logger.warning("Model Maybe Degrading, Calling Engineer...")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to check model performance due to: {e}")
+        raise
+
+
 
 @flow(name="Flow-2-Daily-Drift")
 def daily_drift():
-    print("Fetching the last 24 rows of sensor data from the Database...")
-    # (Your code to fetch data from your DB container)
+    logger = get_run_logger()
+    current_data, refrence_data = read_data_from_db()
+
+    data_drift = data_report(current_data, refrence_data)
+    is_drift = check_for_drift(data_drift)
     
-    print("Checking for data drift using Evidently UI...")
-    drift_detected = True  # Let's assume Evidently found drift
+    model_performance = model_performance_report(current_data=current_data, refrence_data=refrence_data)
+    is_degraded = model_performance_check(model_performance)
     
-    if drift_detected:
-        print("Alert! Drift found. Triggering Flow 3...")
-        # This tells the server to immediately put Flow 3 into the work pool
+    if is_drift and not is_degraded:
+        logger.warning("Data Drifted but model still performing good")
+
+    elif is_degraded and not is_drift:
+        logger.error("Model degrading while data isn't drifting")
+        logger.warning("Triggering Training FLow")
         run_deployment(name="Flow-3-MLflow-Retrain/automated-retrain", timeout=0)
+
+    elif is_drift and is_degraded:
+        logger.warning("Check Sensors reads...")
+
+    else:
+        logger.info("ALl good")
+        return
+    print("call slack")
 
 @flow(name="Flow-3-MLflow-Retrain")
 def mlflow_retrain():
