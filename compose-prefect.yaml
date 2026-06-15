@@ -18,12 +18,12 @@ services:
       - prefect_network
 
   prefect-pool:
-    image: prefecthq/prefect:3-latest
+    build: .
     environment:
       - PREFECT_API_URL="${PREFECT_API_URL}"
     volumes:
-      - ./:/opt/prefect/flows
-    working_dir: /opt/prefect/flows
+      - ./reports:/opt/prefect/reports
+    working_dir: /opt/prefect/app
     command: >
       bash -c "
       prefect pool create local-pool --concurrency-limit 1 --type process || true &&
@@ -37,9 +37,11 @@ services:
 
 
   prefect-worker:
-    image: prefecthq/prefect:3-latest
+    build: .
     environment:
       - PREFECT_API_URL="${PREFECT_API_URL}"
+    volumes:
+      - ./reports:/opt/prefect/reports
     command: prefect worker start --pool local-pool
     networks:
       - prefect_network
