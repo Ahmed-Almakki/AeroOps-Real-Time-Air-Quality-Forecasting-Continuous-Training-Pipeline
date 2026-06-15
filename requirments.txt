@@ -6,3 +6,6 @@ scikit-learn==1.8.0
 pandas==2.3.3
 mlflow==3.11.1
 confluent-kafka==2.14.0
+SQLAlchemy==2.0.49
+psycopg==3.3.3
+psycopg-binary==3.3.3

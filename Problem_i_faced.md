@@ -26,7 +26,7 @@ because mlflow is inside container and my python script is in my local pc, i hav
 * Mlflow server is not responsible for saving the artifact this is python script problem is the one responsible for saving the artifacts
 * As you can see above the file for storing the artifacte inside a container is set in the enviroment vairable
 * But as i said the one is saving the artifact is the python, and python doesn't have access inside the mlflow container
-* So at first look, you say "then i don't need the volume if python is one who saving i just re-write teh command to save in my local file ./artifacts for example"
+* So at first look, you say "then i don't need the volume if python is one who saving i just re-write the command to save in my local file ./artifacts for example"
 * Still gona face problem because if you did that it will work at first, but the moment you stop the container and run it again you will have the problem
 * The problem is Mlflow don't have access to the model because it doesn't know where it exists
 
@@ -40,7 +40,7 @@ because mlflow is inside container and my python script is in my local pc, i hav
     --host 0.0.0.0
     --port 5000
 ```
-* this line make MLFLOW SERVER as middleman, your script pload the model to the server over HTTP (8080) and server will place the model inside the container it self and the container is already mounted to my volume so here the artifacs is presistant even if we stop and run the container again and MLFLOW know where the artifact exists
+* this line make MLFLOW SERVER as middleman, your script load the model to the server over HTTP (8080) and server will place the model inside the container it self and the container is already mounted to my volume so here the artifacs is presistant even if we stop and run the container again and MLFLOW know where the artifact exists
 * in production better to use AWS S3, GCP Storage, Azure Blob
 
 ## kafka Connect Configuration
@@ -78,3 +78,25 @@ because mlflow is inside container and my python script is in my local pc, i hav
 ### the name of the topic:
 * topic.prefexi + schema_name + table_name
 * In this project is called => **pg.public.air_pollution**
+
+## Prefect
+### A) Dependencies in docker-compose Problem:
+* first time i just used the image and then use the (RUN) command to run the script after i just used the volum to copy it inside the contain
+* the problem with this approach is the run command will execute the file and the first problem you gonna face is **pandas/numpy/..** not found
+* because the container i created only contain the prefect
+### a) Dependencies in docker compose solution:
+* create a dockerfile that contain the prefect and the other dependncies that needed for the file to run smoothly
+* use the dockerfile in the docker compose
+
+### B) Volumes in docker compose:
+* there is three service in my docker compose the first one just to run the server
+* second one do two things create the pool and run the script **Register the script** to be percies
+* because the code is saying **main.deploy() not main()** this means the code is regitered to be run later not run immedialty if it said main() this means run immediatly and this isn't the case
+* Thats why the third service the **prefect-worker** is the one who will run the main() when the scheduled time come and this means this container gonna save the html file thats why the volumns here is more important than to be in the second continer in the docker-compose file
+
+### C) Immutable Code:
+#### dockerfile:
+* i had two options either copy my code insided the dockerfile and create immutable image, 
+* problem with this approach is if i have to change something in the code i had to stop the container and then updated and rebuild it and then run again
+* the other option is to just create the image using the dockefile and make the image already holding the dependecies it needs like (pandas - mlflow - ...) so that only need to fetch the code and the container have everything ready for it to run
+* this is better because you don't need to stop the container the only thing need is to update the code and re-upload it to github and thats is it

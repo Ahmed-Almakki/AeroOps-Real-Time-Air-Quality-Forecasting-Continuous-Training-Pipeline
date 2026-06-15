@@ -83,7 +83,7 @@ def data_report(current_data: pd.DataFrame, reference_data: pd.DataFrame) -> dic
         ])
 
         my_eval = report.run(reference_data=reference_eval, current_data=current_eval)
-        my_eval.save_html(f"drift_report_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.html")
+        my_eval.save_html(f"/opt/prefect/reports/drift_report_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.html")
         logger.info("Drift check completed successfully.")
 
         return my_eval.dict()
@@ -143,7 +143,7 @@ def model_performance_report(current_data: pd.DataFrame, refrence_data: pd.DataF
         ], includ_test=True)
         model_performance_eval = report.run(current_data=cur_data, reference_data=ref_data)
 
-        model_performance_eval.save_html(f"model_performance_check_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.html")
+        model_performance_eval.save_html(f"/opt/prefect/reports/model_performance_check_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.html")
         logger.info("Model performance check completed successfully.")
 
         return model_performance_eval.dict()
