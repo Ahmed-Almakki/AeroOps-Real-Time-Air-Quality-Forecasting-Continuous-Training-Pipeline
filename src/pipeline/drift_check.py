@@ -1,39 +1,61 @@
 from dotenv import load_dotenv
 from evidently import Dataset, DataDefinition, Report, Regression
 from evidently.presets import DataDriftPreset, RegressionPreset
+import json
 import os
 import pandas as pd
 from prefect import flow, task, get_run_logger
 from prefect.deployments import run_deployment
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session
-
+import urllib.request as req
 
 load_dotenv()
 engine = create_engine(f"postgresql://{os.getenv('POSTGRES_USER')}:{os.getenv('POSTGRES_PASSWORD')}@{os.getenv('POSTGRES_HOST')}/{os.getenv('POSTGRES_DB')}")
 
 
+def send_request(message: str) -> bool:
+    logger = get_run_logger()
+    try:
+        logger.info("Start the process of sending an alert...")
+        slack_webhook = os.getenv('SLACK_WEBHOOK_URL', 'N/A')
+        if slack_webhook == 'N/A':
+            logger.error(f"Couldn't find the URL: url is {slack_webhook}")
+        else:
+            data = json.dumps({"text": message}).encode('utf-8')
+            request = req.Request(slack_webhook, data=data, headers={"Content-Type": "application/json"})
+            with req.urlopen(request) as response:
+                logger.info("Successfully send an alert to slack")
+                if response.status == 200:
+                    return True
+                return False
+    except Exception as e:
+        logger.error("Failed to send request due to: {e}")
+
 @task(name="read_data_from_db", retries=3, retry_delay_seconds=10)
 def read_data_from_db() -> tuple[pd.DataFrame, pd.DataFrame]:
+    logger = get_run_logger()
     try:
-        logger = get_run_logger()
         logger.info("Fetching the last 24 rows of sensor data from the Database...")
         with Session(engine) as session:
-            result = session.execute(f"""
+            query = text(f"""
                 SELECT * FROM {os.getenv('TABLE_NAME')}
                 WHERE timestamp >= NOW() - INTERVAL '48 HOURS'
                 ORDER BY timestamp DESC
                 LIMIT 48;
             """)
+            result = session.execute(query)
 
             data = result.fetchall()
             columns = result.keys()
             
             df = pd.DataFrame(data, columns=columns)
-            logger.info(f"Fetched {len(df)} rows of data from the database.")
+        logger.info(f"Fetched {len(df)} rows.")
 
-            current_data = df.iloc[:24].copy()
-            reference_data = df.iloc[24:].copy()
+        df['timestamp'] = pd.to_datetime(df['timestamp'])
+        cutoff_time = df['timestamp'].max() - pd.Timedelta(hours=24)
+        current_data = df[df['timestamp'] > cutoff_time].copy()
+        reference_data = df[df['timestamp'] <= cutoff_time].copy()
 
         logger.info("Data fetched successfully from the database.")
         return current_data, reference_data
@@ -92,7 +114,7 @@ def check_for_drift(drift_report: dict) -> bool:
                     col_method = config.get('method', 'N/A')
                 
                 if value < col_threshold:
-                    logger.warning(f"Drifted Coulmn: {col_name}, threshold: {col_threshold} method: {col_method}")
+                    logger.warning(f"Drifted Column: {col_name} | score: {value} | threshold: {col_threshold} method: {col_method}")
             return True                
         
         logger.info(f"No significant data drift detected. drift_check_percentage: {drift_check * 100}%")
@@ -157,6 +179,8 @@ def model_performance_check(performance: dict) -> bool:
 @flow(name="Flow-2-Daily-Drift")
 def daily_drift():
     logger = get_run_logger()
+    msg = ""
+    trigger_training = False
     current_data, refrence_data = read_data_from_db()
 
     data_drift = data_report(current_data, refrence_data)
@@ -167,19 +191,27 @@ def daily_drift():
     
     if is_drift and not is_degraded:
         logger.warning("Data Drifted but model still performing good")
+        msg = "A Data Drift is Suspected"
 
     elif is_degraded and not is_drift:
+        msg = "Model performance degergation is suspected"
+        trigger_training = True
         logger.error("Model degrading while data isn't drifting")
         logger.warning("Triggering Training FLow")
-        run_deployment(name="Flow-3-MLflow-Retrain/automated-retrain", timeout=0)
+
 
     elif is_drift and is_degraded:
         logger.warning("Check Sensors reads...")
+        msg = "Both data drift and model degregation is suspected"
 
     else:
         logger.info("ALl good")
         return
-    print("call slack")
+    
+    send_request(message=msg)
+    if trigger_training:
+        run_deployment(name="Flow-3-MLflow-Retrain/automated-retrain", timeout=0)
+
 
 @flow(name="Flow-3-MLflow-Retrain")
 def mlflow_retrain():
