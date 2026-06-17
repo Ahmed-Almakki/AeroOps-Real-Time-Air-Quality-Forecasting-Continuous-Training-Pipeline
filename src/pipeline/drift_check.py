@@ -6,12 +6,14 @@ import os
 import pandas as pd
 from prefect import flow, task, get_run_logger
 from prefect.deployments import run_deployment
+from prefect.runner.storage import GitRepository
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session
 import urllib.request as req
 
 load_dotenv()
 engine = create_engine(f"postgresql://{os.getenv('POSTGRES_USER')}:{os.getenv('POSTGRES_PASSWORD')}@{os.getenv('POSTGRES_HOST')}/{os.getenv('POSTGRES_DB')}")
+repositry = GitRepository(url=os.getenv("GITHUB_REPO"), branch="dev", directories=["src"])
 
 
 def send_request(message: str) -> bool:
@@ -40,7 +42,7 @@ def read_data_from_db() -> tuple[pd.DataFrame, pd.DataFrame]:
         with Session(engine) as session:
             query = text(f"""
                 SELECT * FROM {os.getenv('TABLE_NAME')}
-                WHERE timestamp >= NOW() - INTERVAL '48 HOURS'
+                WHERE updated >= NOW() - INTERVAL '48 SECONDS'
                 ORDER BY timestamp DESC
                 LIMIT 48;
             """)
@@ -52,14 +54,15 @@ def read_data_from_db() -> tuple[pd.DataFrame, pd.DataFrame]:
             df = pd.DataFrame(data, columns=columns)
         logger.info(f"Fetched {len(df)} rows.")
 
-        df['timestamp'] = pd.to_datetime(df['timestamp'])
-        cutoff_time = df['timestamp'].max() - pd.Timedelta(hours=24)
-        current_data = df[df['timestamp'] > cutoff_time].copy()
-        reference_data = df[df['timestamp'] <= cutoff_time].copy()
+        df['updated'] = pd.to_datetime(df['updated'])
+        cutoff_time = df['updated'].max() - pd.Timedelta(seconds=24)
+        current_data = df[df['updated'] > cutoff_time].copy()
+        reference_data = df[df['updated'] <= cutoff_time].copy()
 
         logger.info("Data fetched successfully from the database.")
         return current_data, reference_data
     except Exception as e:
+
         logger.error(f"Error fetching data from the database: {e}")
         raise
 
@@ -219,13 +222,18 @@ def mlflow_retrain():
     print("Looping through 100 model combinations...")
     # (Your heavy loop to train models, track parameters, and pick the best one)
 
+
+
 if __name__ == "__main__":
-    # This is what Service 3 executes to register BOTH flows automatically
-    daily_drift.deploy(
+    daily_drift.from_source(
+        source=repositry,
+        entrypoint="src/pipeline.drift_check.py:daily_drift"
+    ).deploy(
         name="automated-drift-check",
         work_pool_name="my-process-pool",
-        cron="0 0 * * *"  # Run automatically every 24 hours
+        cron="0 0 * * *"
     )
+    
     mlflow_retrain.deploy(
         name="automated-retrain",
         work_pool_name="my-process-pool"  # No cron! This only runs when Flow 2 calls it
