@@ -26,7 +26,7 @@ services:
     working_dir: /opt/prefect/app
     command: >
       bash -c "
-      prefect pool create local-pool --concurrency-limit 1 --type process || true &&
+      prefect pool create my-process-pool--concurrency-limit 1 --type process || true &&
       python -m src.pipeline.drift_check.py
       "
     networks:
@@ -42,7 +42,7 @@ services:
       - PREFECT_API_URL="${PREFECT_API_URL}"
     volumes:
       - ./reports:/opt/prefect/reports
-    command: prefect worker start --pool local-pool
+    command: prefect worker start --pool my-process-pool
     networks:
       - prefect_network
     depends_on:

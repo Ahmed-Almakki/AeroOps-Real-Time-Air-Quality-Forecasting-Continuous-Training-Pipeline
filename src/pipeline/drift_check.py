@@ -6,14 +6,12 @@ import os
 import pandas as pd
 from prefect import flow, task, get_run_logger
 from prefect.deployments import run_deployment
-from prefect.runner.storage import GitRepository
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session
 import urllib.request as req
 
 load_dotenv()
 engine = create_engine(f"postgresql://{os.getenv('POSTGRES_USER')}:{os.getenv('POSTGRES_PASSWORD')}@{os.getenv('POSTGRES_HOST')}/{os.getenv('POSTGRES_DB')}")
-repositry = GitRepository(url=os.getenv("GITHUB_REPO"), branch="dev", directories=["src"])
 
 
 def send_request(message: str) -> bool:
@@ -225,15 +223,12 @@ def mlflow_retrain():
 
 
 if __name__ == "__main__":
-    daily_drift.from_source(
-        source=repositry,
-        entrypoint="src/pipeline.drift_check.py:daily_drift"
-    ).deploy(
+    daily_drift.deploy(
         name="automated-drift-check",
         work_pool_name="my-process-pool",
         cron="0 0 * * *"
     )
-    
+
     mlflow_retrain.deploy(
         name="automated-retrain",
         work_pool_name="my-process-pool"  # No cron! This only runs when Flow 2 calls it
