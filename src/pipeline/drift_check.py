@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 import urllib.request as req
 
 load_dotenv()
-engine = create_engine(f"postgresql://{os.getenv('POSTGRES_USER')}:{os.getenv('POSTGRES_PASSWORD')}@{os.getenv('POSTGRES_HOST')}/{os.getenv('POSTGRES_DB')}")
+engine = create_engine(f"postgresql+psycopg://{os.getenv('POSTGRES_USER')}:{os.getenv('POSTGRES_PASSWORD')}@{os.getenv('POSTGRES_HOST')}/{os.getenv('POSTGRES_DB')}")
 
 
 def send_request(message: str) -> bool:
@@ -211,25 +211,29 @@ def daily_drift():
     
     send_request(message=msg)
     if trigger_training:
-        run_deployment(name="Flow-3-MLflow-Retrain/automated-retrain", timeout=0)
+        # run_deployment(name="Flow-3-MLflow-Retrain/automated-retrain", timeout=0)
+        print("placeHolder")
 
 
-@flow(name="Flow-3-MLflow-Retrain")
-def mlflow_retrain():
-    print("Connecting to MLflow container...")
-    print("Looping through 100 model combinations...")
-    # (Your heavy loop to train models, track parameters, and pick the best one)
+# @flow(name="Flow-3-MLflow-Retrain")
+# def mlflow_retrain():
+#     print("Connecting to MLflow container...")
+#     print("Looping through 100 model combinations...")
+#     # (Your heavy loop to train models, track parameters, and pick the best one)
 
 
 
 if __name__ == "__main__":
-    daily_drift.deploy(
+    daily_drift.from_source(
+        source="/opt/prefect/app",
+        entrypoint="src/pipeline/drift_check.py:daily_drift"
+    ).deploy(
         name="automated-drift-check",
         work_pool_name="my-process-pool",
         cron="0 0 * * *"
     )
 
-    mlflow_retrain.deploy(
-        name="automated-retrain",
-        work_pool_name="my-process-pool"  # No cron! This only runs when Flow 2 calls it
-    )
+    # mlflow_retrain.deploy(
+    #     name="automated-retrain",
+    #     work_pool_name="my-process-pool"  # No cron! This only runs when Flow 2 calls it
+    # )

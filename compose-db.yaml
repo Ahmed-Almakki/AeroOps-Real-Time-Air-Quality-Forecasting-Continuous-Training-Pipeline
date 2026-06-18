@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:17.9
+    image: pg:0.0.1
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
