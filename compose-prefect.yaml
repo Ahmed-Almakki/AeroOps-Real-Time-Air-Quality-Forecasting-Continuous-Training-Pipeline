@@ -3,7 +3,7 @@ services:
     image: prefecthq/prefect:3-latest
     environment:
     # http://prefect-server:4200/api instead of localhost becasue localhost will refer to inside th docker container not the host machine
-      - PREFECT_API_URL="${PREFECT_API_URL}"
+      - PREFECT_API_URL=http://prefect_server:4200/api
       # 0.0.0.0 to allow access from outside the container
     command: prefect server start --host 0.0.0.0
     ports:
@@ -13,21 +13,22 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
+      start_period: 60s
     networks:
       - prefect_network
 
   prefect-pool:
-    build: .
+    image: prefect-pollution:0.0.8
     environment:
-      - PREFECT_API_URL="${PREFECT_API_URL}"
+      - PREFECT_API_URL=http://prefect_server:4200/api
     volumes:
       - ./reports:/opt/prefect/reports
     working_dir: /opt/prefect/app
     command: >
       bash -c "
-      prefect pool create my-process-pool--concurrency-limit 1 --type process || true &&
-      python -m src.pipeline.drift_check.py
+      prefect work-pool create "my-process-pool" --type process || true &&
+      prefect work-pool set-concurrency-limit "my-process-pool" 1 || true &&
+      python -m src.pipeline.drift_check
       "
     networks:
       - prefect_network
@@ -37,12 +38,12 @@ services:
 
 
   prefect-worker:
-    build: .
+    image: prefect-pollution:0.0.8
     environment:
       - PREFECT_API_URL="${PREFECT_API_URL}"
     volumes:
       - ./reports:/opt/prefect/reports
-    command: prefect worker start --pool my-process-pool
+    command: prefect worker start --pool "my-process-pool"
     networks:
       - prefect_network
     depends_on:

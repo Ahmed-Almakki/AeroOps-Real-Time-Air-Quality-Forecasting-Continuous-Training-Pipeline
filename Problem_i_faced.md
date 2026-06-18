@@ -100,3 +100,9 @@ because mlflow is inside container and my python script is in my local pc, i hav
 * problem with this approach is if i have to change something in the code i had to stop the container and then updated and rebuild it and then run again
 * the other option is to just create the image using the dockefile and make the image already holding the dependecies it needs like (pandas - mlflow - ...) so that only need to fetch the code and the container have everything ready for it to run
 * this is better because you don't need to stop the container the only thing need is to update the code and re-upload it to github and thats is it
+
+## Creating docker image
+* if i copy src ./src in the docker file in this case i don't need to deploy the flow from github
+* because the registration is done when i did **docker compose up -d** when the second service run the script **python -m src.pipeline.dirft_check.py**
+* the above line of command will run the script one time to register the info in the pool
+* now when i run from github it will work but if i change the **corn** for example it won't change because the registration in first place was from inside the container the code lives there when i did **copy src ./src**
