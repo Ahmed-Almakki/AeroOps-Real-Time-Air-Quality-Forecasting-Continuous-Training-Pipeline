@@ -11,7 +11,6 @@ from sqlalchemy.orm import Session
 import urllib.request as req
 
 load_dotenv()
-engine = create_engine(f"postgresql+psycopg://{os.getenv('POSTGRES_USER')}:{os.getenv('POSTGRES_PASSWORD')}@{os.getenv('POSTGRES_HOST')}/{os.getenv('POSTGRES_DB')}")
 
 
 def send_request(message: str) -> bool:
@@ -36,11 +35,12 @@ def send_request(message: str) -> bool:
 def read_data_from_db() -> tuple[pd.DataFrame, pd.DataFrame]:
     logger = get_run_logger()
     try:
+        engine = create_engine(f"postgresql+psycopg://{os.getenv('POSTGRES_USER')}:{os.getenv('POSTGRES_PASSWORD')}@{os.getenv('POSTGRES_HOST')}/{os.getenv('POSTGRES_DB')}")
         logger.info("Fetching the last 24 rows of sensor data from the Database...")
         with Session(engine) as session:
             query = text(f"""
                 SELECT * FROM {os.getenv('TABLE_NAME')}
-                WHERE updated >= NOW() - INTERVAL '48 SECONDS'
+                WHERE updated >= NOW() - INTERVAL '1 HOURS'
                 ORDER BY timestamp DESC
                 LIMIT 48;
             """)
@@ -53,7 +53,7 @@ def read_data_from_db() -> tuple[pd.DataFrame, pd.DataFrame]:
         logger.info(f"Fetched {len(df)} rows.")
 
         df['updated'] = pd.to_datetime(df['updated'])
-        cutoff_time = df['updated'].max() - pd.Timedelta(seconds=24)
+        cutoff_time = df['updated'].max() - pd.Timedelta(minutes=5)
         current_data = df[df['updated'] > cutoff_time].copy()
         reference_data = df[df['updated'] <= cutoff_time].copy()
 
@@ -230,7 +230,7 @@ if __name__ == "__main__":
     ).deploy(
         name="automated-drift-check",
         work_pool_name="my-process-pool",
-        cron="0 0 * * *"
+        cron="*/10 * * * *"
     )
 
     # mlflow_retrain.deploy(

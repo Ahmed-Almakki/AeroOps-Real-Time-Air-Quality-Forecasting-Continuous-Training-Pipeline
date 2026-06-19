@@ -1,6 +1,6 @@
 services:
   db:
-    image: pg:0.0.1
+    image: pg:0.0.4
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -11,6 +11,7 @@ services:
 
     networks:
       - prefect_network
+      - default
     
     healthcheck:
       # Using $$ to reference the container's internal environment variables
