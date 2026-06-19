@@ -4,6 +4,12 @@ services:
     container_name: kafka
     ports:
       - "9092:9092"
+    healthcheck:
+      test: ["CMD", "kafka-cluster", "cluster-id", "--bootstrap-server", "localhost:9092"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      
     environment:
       KAFKA_KRAFT_MODE: "true" # manage its own meadata and cluster coordination, instead of using Zookeeper
 
