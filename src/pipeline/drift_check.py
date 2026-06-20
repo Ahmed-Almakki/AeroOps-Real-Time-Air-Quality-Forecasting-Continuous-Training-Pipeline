@@ -36,12 +36,12 @@ def read_data_from_db() -> tuple[pd.DataFrame, pd.DataFrame]:
     logger = get_run_logger()
     try:
         engine = create_engine(f"postgresql+psycopg://{os.getenv('POSTGRES_USER')}:{os.getenv('POSTGRES_PASSWORD')}@{os.getenv('POSTGRES_HOST')}/{os.getenv('POSTGRES_DB')}")
-        logger.info("Fetching the last 24 rows of sensor data from the Database...")
+        logger.info(f"Fetching the last 24 rows of sensor data from the Database...\n Database host is {os.getenv('POSTGRES_HOST')}")
         with Session(engine) as session:
             query = text(f"""
                 SELECT * FROM {os.getenv('TABLE_NAME')}
-                WHERE updated >= NOW() - INTERVAL '1 HOURS'
-                ORDER BY timestamp DESC
+                WHERE updated >= NOW() - INTERVAL '24 HOURS'
+                ORDER BY updated DESC
                 LIMIT 48;
             """)
             result = session.execute(query)
@@ -50,14 +50,21 @@ def read_data_from_db() -> tuple[pd.DataFrame, pd.DataFrame]:
             columns = result.keys()
             
             df = pd.DataFrame(data, columns=columns)
-        logger.info(f"Fetched {len(df)} rows.")
+        logger.info(f"Fetched {len(df)} rows. and columns: {columns}")
 
         df['updated'] = pd.to_datetime(df['updated'])
-        cutoff_time = df['updated'].max() - pd.Timedelta(minutes=5)
-        current_data = df[df['updated'] > cutoff_time].copy()
-        reference_data = df[df['updated'] <= cutoff_time].copy()
+        # cutoff_time = df['updated'].max() - pd.Timedelta(minutes=1)
+        # current_data = df[df['updated'] > cutoff_time].copy()
+        # reference_data = df[df['updated'] <= cutoff_time].copy()
+        current_data = df[:24].copy()
+        reference_data = df[24:].copy()
 
-        logger.info("Data fetched successfully from the database.")
+        # Add this safety check!
+        if len(current_data) < 24 or len(reference_data) < 24:
+            logger.warning(f"Not enough data for drift check! Found {len(df)} total rows.")
+            raise ValueError("Insufficient data to split into current and reference sets.")
+
+        logger.info(f"Data fetched successfully from the database. \ncurrent_Data: {current_data.head(2)}\nrefrence_Data: {reference_data.head(2)}")
         return current_data, reference_data
     except Exception as e:
 
@@ -72,7 +79,7 @@ def data_report(current_data: pd.DataFrame, reference_data: pd.DataFrame) -> dic
         logger.info("Checking for drift in data...")
         
         schema = DataDefinition(
-            numerical_columns=["SO2", "NO2", "CO", "O3", "TEMP", "PRES", "DEWP", "WSPM"],
+            numerical_columns=["so2", "no2", "co", "o3", "temp", "pres", "dewp", "wspm"],
             categorical_columns=["wd"]
         )
         
@@ -131,7 +138,7 @@ def model_performance_report(current_data: pd.DataFrame, refrence_data: pd.DataF
         logger = get_run_logger()
         logger.info("Checking model performance...")
         schema = DataDefinition(
-            numerical_columns=["SO2", "NO2", "CO", "O3", "TEMP", "PRES", "DEWP", "WSPM"],
+            numerical_columns=["so2", "no2", "co", "o3", "temp", "pres", "dewp", "wspm"],
             categorical_columns=["wd"],
             regression=[Regression(target="PM2.5", prediction="prediction")]
         )
@@ -141,7 +148,7 @@ def model_performance_report(current_data: pd.DataFrame, refrence_data: pd.DataF
 
         report = Report([
             RegressionPreset()
-        ], includ_test=True)
+        ], include_test=True)
         model_performance_eval = report.run(current_data=cur_data, reference_data=ref_data)
 
         model_performance_eval.save_html(f"/opt/prefect/reports/model_performance_check_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.html")
@@ -230,7 +237,7 @@ if __name__ == "__main__":
     ).deploy(
         name="automated-drift-check",
         work_pool_name="my-process-pool",
-        cron="*/10 * * * *"
+        cron="*/1 * * * *"
     )
 
     # mlflow_retrain.deploy(

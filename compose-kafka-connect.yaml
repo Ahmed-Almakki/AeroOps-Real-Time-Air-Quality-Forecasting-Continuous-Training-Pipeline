@@ -4,6 +4,9 @@ services:
     container_name: connect-1
     ports:
       - "8083:8083"
+    networks:
+      - prefect_network
+      -  default
     restart: always
     hostname: connect-1
     depends_on:
