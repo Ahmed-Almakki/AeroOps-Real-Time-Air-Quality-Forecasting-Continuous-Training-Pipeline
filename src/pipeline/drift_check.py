@@ -138,9 +138,9 @@ def model_performance_report(current_data: pd.DataFrame, refrence_data: pd.DataF
         logger = get_run_logger()
         logger.info("Checking model performance...")
         schema = DataDefinition(
-            numerical_columns=["so2", "no2", "co", "o3", "temp", "pres", "dewp", "wspm"],
+            numerical_columns=["so2", "no2", "co", "o3", "temp", "pres", "dewp", "wspm", "prediction", "real_output"],
             categorical_columns=["wd"],
-            regression=[Regression(target="PM2.5", prediction="prediction")]
+            regression=[Regression(target="real_output", prediction="prediction")]
         )
 
         cur_data = Dataset.from_pandas(current_data, data_definition=schema)
@@ -148,7 +148,7 @@ def model_performance_report(current_data: pd.DataFrame, refrence_data: pd.DataF
 
         report = Report([
             RegressionPreset()
-        ], include_test=True)
+        ], include_tests=True)
         model_performance_eval = report.run(current_data=cur_data, reference_data=ref_data)
 
         model_performance_eval.save_html(f"/opt/prefect/reports/model_performance_check_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.html")
