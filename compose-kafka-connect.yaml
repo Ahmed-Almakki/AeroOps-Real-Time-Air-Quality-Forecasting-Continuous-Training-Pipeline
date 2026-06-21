@@ -1,6 +1,7 @@
 services:
   connect-1:
-    image: confluentinc/cp-kafka-connect:8.1.3
+    # image: confluentinc/cp-kafka-connect:8.1.3
+    image: kafka_connect:0.0.1
     container_name: connect-1
     ports:
       - "8083:8083"
@@ -9,6 +10,8 @@ services:
       -  default
     restart: always
     hostname: connect-1
+    volumes:
+      - ./infra/kafka_connect:/kafka_connect
     depends_on:
       kafka:
         condition: service_healthy
@@ -51,7 +54,10 @@ services:
       - bash 
       - -c
       - |
-        echo "Installing connectors..."
-        confluent-hub install --no-prompt debezium/debezium-connector-postgresql:latest
-        echo "Connectors installed, starting Kafka Connect worker..."
+        echo "Starting deployment script in the background..."
+        # The '&' is critical here so it runs in the background
+        bash /kafka_connect/deploy_connect.sh &
+        
+        echo "Starting Kafka Connect worker..."
+        # This starts the actual foreground service
         /etc/confluent/docker/run
