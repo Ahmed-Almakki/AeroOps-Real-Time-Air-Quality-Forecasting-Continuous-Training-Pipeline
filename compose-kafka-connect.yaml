@@ -50,6 +50,13 @@ services:
 
       CONNECT_SECURITY_PROTOCOL: PLAINTEXT
 
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:8083/connectors | grep -q 'postgres_source' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 60s
+
     command:
       - bash 
       - -c
