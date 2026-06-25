@@ -1,13 +1,14 @@
+from dotenv import load_dotenv
+import logging
+import os
 import pandas as pd
 from src.input_data.kafka_input import KafkaInput
 from ..data_prep.process_input import process_input
-import os
-from dotenv import load_dotenv
-import logging
 
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', colorize=True)
 load_dotenv()
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', colorize=True)
+
 
 
 def processed_data(data: pd.DataFrame) -> pd.DataFrame:
