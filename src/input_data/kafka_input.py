@@ -1,11 +1,14 @@
 from confluent_kafka import Consumer, KafkaException, KafkaError
+from dotenv import load_dotenv
 import json
 import logging
+import os
+
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
+load_dotenv()
 conf = {
-    'bootstrap.servers': 'localhost:9092',
+    'bootstrap.servers': os.getenv("BOOTSTRAP_SERVER"),
     'group.id': 'my_group',
     'auto.offset.reset': 'earliest',
     'enable.auto.commit': False

@@ -106,3 +106,8 @@ because mlflow is inside container and my python script is in my local pc, i hav
 * because the registration is done when i did **docker compose up -d** when the second service run the script **python -m src.pipeline.dirft_check.py**
 * the above line of command will run the script one time to register the info in the pool
 * now when i run from github it will work but if i change the **corn** for example it won't change because the registration in first place was from inside the container the code lives there when i did **copy src ./src**
+
+## Mlflow
+* first time the mlflow was running in local host during development
+* after dockerizing we need to connect using the docker network, hence **--host 0.0.0.0** which expose the service to other container
+* using the service name as host **http://main_flow:5000**

@@ -218,8 +218,10 @@ def daily_drift():
     
     send_request(message=msg)
     if trigger_training:
-        # run_deployment(name="Flow-3-MLflow-Retrain/automated-retrain", timeout=0)
-        print("placeHolder")
+        logger.info("Starting Re-training flow...")
+        # deployment name usually <flow_name>/<deployment_nname> "deployment name as written in the .deploy(name=...)" flow name found in the @flow(name=)
+        run_deployment(name="main_flow/automated-retrain-deployment", timeout=0)
+        logger.info("Finish deployment successfully")
 
 
 # @flow(name="Flow-3-MLflow-Retrain")
@@ -240,7 +242,4 @@ if __name__ == "__main__":
         cron="*/1 * * * *"
     )
 
-    # mlflow_retrain.deploy(
-    #     name="automated-retrain",
-    #     work_pool_name="my-process-pool"  # No cron! This only runs when Flow 2 calls it
-    # )
+    
