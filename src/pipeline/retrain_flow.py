@@ -164,7 +164,7 @@ if __name__ == "__main__":
     
     main.from_source(
         source="/opt/prefect/app",
-        entrypoint="src/pipeline/retrain.py:main"
+        entrypoint="src/pipeline/retrain_flow.py:main"
     ).deploy(
         name="automated-retrain-deployment",
         work_pool_name="my-process-pool"

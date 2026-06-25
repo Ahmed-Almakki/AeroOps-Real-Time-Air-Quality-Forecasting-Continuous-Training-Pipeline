@@ -23,6 +23,8 @@ services:
 
   prefect-pool:
     image: prefect-pollution:0.0.3
+    env_file:
+     - .env
     environment:
       - PREFECT_API_URL=http://prefect_server:4200/api
     volumes:
@@ -39,7 +41,9 @@ services:
       - prefect_network
     depends_on:
       prefect_server:
-        condition: service_healthy  
+        condition: service_healthy
+      mlflow_air:
+        condition: service_healthy
 
 
   prefect-worker:
