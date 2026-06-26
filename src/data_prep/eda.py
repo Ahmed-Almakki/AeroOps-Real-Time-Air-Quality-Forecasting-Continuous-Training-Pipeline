@@ -1,7 +1,7 @@
-import pandas as pd
-from pathlib import Path
 import logging
+from pathlib import Path
 
+import pandas as pd
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -21,7 +21,7 @@ def split_dataset(df: pd.DataFrame) -> pd.DataFrame:
         logging.info("Date column split successfully.")
         return train_raw, df_test
     except Exception as e:
-        logging.error(f"Error occurred while splitting date: {e}")
+        logging.error("Error occurred while splitting date: %s", e)
         return df
 
 
@@ -31,7 +31,7 @@ def get_processed_data(file: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFr
     Parameters:
     file (str): The name of the CSV file containing the data.
     Returns:
-        tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]: A tuple containing the processed DataFrame 
+        tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]: A tuple containing the processed DataFrame
     with filled missing values and a copy of the DataFrame with dropped missing values.
     """
     try:
@@ -39,22 +39,22 @@ def get_processed_data(file: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFr
         # file_path = current_dir / '../data' / file
         project_root = Path(__file__).resolve().parent.parent.parent
         file_path = project_root / 'data' / file
-        logging.info(f"Loading data...")
+        logging.info("Loading data...")
 
         if not file_path.exists():
-            logging.error(f"File {file_path} does not exist.")
+            logging.error("File %s does not exist.", file_path)
             return None, None, None
-        
+
         df = pd.read_csv(file_path)
         df = df.drop(columns=['No', 'station'])
         df = pd.get_dummies(df, columns=['wd'])
 
         df_train, df_test = split_dataset(df)
-        
+
         if df_train is None or df_test is None:
             logging.error("Failed to split dataset.")
             return None, None, None
-        
+
         df_dropped_values = df_train.copy()
 
         df_train.fillna(method='ffill', inplace=True)
@@ -63,9 +63,9 @@ def get_processed_data(file: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFr
         logging.info("Data loaded and processed successfully.")
         return df_train, df_dropped_values, df_test
     except Exception as e:
-        logging.error(f"Error occurred: {e}")
+        logging.error("Error occurred: %s", e)
         return None, None, None
 
-    
+
 # df, df_b, df_test = get_processed_data('PRSA_Data_Aotizhongxin_20130301-20170228.csv')
 # print(f"df shape: {df.shape} | df_b shape: {df_b.shape} | df_test shape: {df_test.shape}")
