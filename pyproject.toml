@@ -1,0 +1,12 @@
+[tool.pylint."messages control"]
+disable = [
+    "line-too-long",
+    "missing-module-docstring",
+    "missing-function-docstring",
+    "invalid-name"
+]
+
+[tool.black]
+line.length = 100
+target-version = ['py313']
+skip-string-normalization = true

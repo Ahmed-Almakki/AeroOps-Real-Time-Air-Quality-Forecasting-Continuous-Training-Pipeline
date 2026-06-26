@@ -31,7 +31,10 @@ def fetch_data() -> tuple[pd.DataFrame, pd.DataFrame]:
             """)
             result = session.execute(query)
             data = result.fetchall()
-            
+
+        if len(data) == 0:
+            raise ValueError("No data fetched from the databse. The table might be empty.")
+
         logger.info(f"Successfully fetched data: {len(data)}")
         
         df = pd.DataFrame(data, columns=result.keys())
@@ -45,9 +48,13 @@ def fetch_data() -> tuple[pd.DataFrame, pd.DataFrame]:
         logger.error(f"Faild to fetch data due to {e}")
         raise
 
+
 @task(name="split_to_x_y", retries=5, retry_delay_seconds=10)
 def input_output_split(df: pd.DataFrame):
     logger = get_run_logger()
+    if len(df) == 0:
+        raise
+
     try:
         logger.info("Start splitting data to feature + output...")
         new_df = df.copy()
@@ -61,7 +68,7 @@ def input_output_split(df: pd.DataFrame):
 
 
 @task(name="Training_models", retries=5, retry_delay_seconds=10)
-def run_optmization(num_trials: int, X_train: pd.DataFrame, Y_train: pd.DataFrame, X_test: pd.DataFrame, Y_test: pd.DataFrame) -> None:
+def run_optmization(X_train: pd.DataFrame, Y_train: pd.DataFrame, X_test: pd.DataFrame, Y_test: pd.DataFrame, num_trials: int=100) -> None:
     """
     Run the hyperparameter optimization process using Hyperopt.
     Parameters:
@@ -71,6 +78,9 @@ def run_optmization(num_trials: int, X_train: pd.DataFrame, Y_train: pd.DataFram
         None
     """
     logging = get_run_logger()
+    if len(X_train) == 0 or len(Y_train) == 0 or len(X_test) == 0 or len(Y_test) == 0:
+        raise ValueError("missing either train/test feature or train/test output")
+
     try:
         logging.info("Starting Processing data...")
         now = datetime.now()
@@ -79,7 +89,7 @@ def run_optmization(num_trials: int, X_train: pd.DataFrame, Y_train: pd.DataFram
         def objective(params):
             logging.info(f"Running trials...")
             try:
-                with mlflow.start_run(name=f"Run_{current_month}_{current_year}"):
+                with mlflow.start_run(run_name=f"Run_{current_month}_{current_year}"):
                     mlflow.log_params(params)
                     model = RandomForestRegressor(**params)
                     model.fit(X_train, Y_train)
@@ -131,7 +141,7 @@ def run_optmization(num_trials: int, X_train: pd.DataFrame, Y_train: pd.DataFram
             
     except Exception as e:
         logging.error("Error occurred while processing data: %s", str(e))
-        return
+        raise e
 
 
 @task(name="evaluate_and_register")
