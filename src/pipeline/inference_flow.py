@@ -18,6 +18,7 @@ def processed_data(data: pd.DataFrame) -> pd.DataFrame:
         return data
     except Exception as e:
         logging.error(f"Error occurred while processing input data: {e}")
+        return 
 
 
 def inference(data: pd.DataFrame) -> int:

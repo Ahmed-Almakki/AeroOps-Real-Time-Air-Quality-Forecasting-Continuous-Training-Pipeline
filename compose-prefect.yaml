@@ -22,7 +22,7 @@ services:
         condition: service_healthy
 
   prefect-pool:
-    image: prefect-pollution:0.0.3
+    image: prefect-pollution:0.0.4
     env_file:
      - .env
     environment:
@@ -47,7 +47,7 @@ services:
 
 
   prefect-worker:
-    image: prefect-pollution:0.0.3
+    image: prefect-pollution:0.0.4
     environment:
       - MLFLOW_SERVER=${MLFLOW_SERVER}
       - MLFLOW_EXPERIMENT_NAME=${MLFLOW_EXPERIMENT_NAME}
