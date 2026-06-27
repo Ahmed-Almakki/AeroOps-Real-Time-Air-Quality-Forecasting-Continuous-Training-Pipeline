@@ -18,7 +18,9 @@ def process_input(msg: dict) -> pd.DataFrame:
             return pd.DataFrame()
         pd_data = pd.DataFrame([json_data])
         data = pd_data.drop(columns=['No', 'station'], errors='ignore')
-        data = pd.get_dummies(data, columns=['wd'])
+
+        if "wd" in data.columns:
+            data = pd.get_dummies(data, columns=['wd'])
 
         logging.info("Input data processed successfully.")
         return data
