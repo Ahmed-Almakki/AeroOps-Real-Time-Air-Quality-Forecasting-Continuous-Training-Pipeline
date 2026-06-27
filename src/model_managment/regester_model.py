@@ -134,7 +134,10 @@ def compare_models(best_run_id) -> bool:
 
 def predict(model) -> float:
     try:
-        golden_df = pd.read_csv("./golden_dataset.csv")
+        try:
+            golden_df = pd.read_csv("./golden_dataset.csv")
+        except Exception as e:
+            logging.error("Faild to load golden data set due to %s", e)
         y = golden_df.pop("PM2.5")
         y_predict = model.predict(golden_df)
         rmse = root_mean_squared_error(y, y_predict)
