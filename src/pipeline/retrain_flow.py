@@ -16,9 +16,6 @@ from src.model_managment.regester_model import register_best_model
 
 load_dotenv()
 
-mlflow.set_tracking_uri(os.getenv('MLFLOW_SERVER'))
-mlflow.set_experiment(os.getenv('MLFLOW_EXPERIMENT_NAME'))
-
 
 @task(name="fetch_data", retries=3, retry_delay_seconds=10)
 def fetch_data() -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -42,7 +39,8 @@ def fetch_data() -> tuple[pd.DataFrame, pd.DataFrame]:
         logger.info("Successfully fetched data: %s", len(data))
 
         df = pd.DataFrame(data, columns=result.keys())
-        df = pd.get_dummies(df, columns=['wd'])
+        if 'wd' in df.columns:
+            df = pd.get_dummies(df, columns=['wd'])
 
         threshold = int(len(df) * 0.1)
         test_df = df[:threshold].copy()
@@ -171,6 +169,8 @@ def register_task():
 @flow(name="main_flow", retries=5, retry_delay_seconds=10)
 def main():
     logger = get_run_logger()
+    mlflow.set_tracking_uri(os.getenv('MLFLOW_SERVER'))
+    mlflow.set_experiment(os.getenv('MLFLOW_EXPERIMENT_NAME'))
     try:
         logger.info("Start the main flow...")
         train, test = fetch_data()
