@@ -195,7 +195,7 @@ def model_performance_check(performance: dict) -> bool:
         test_result = []
         for item in tests:
             test_name = item['name']
-            result = 1 if item['status'].value == 'FAIL' else 0
+            result = 1 if item.get('status') == 'FAIL' else 0
             test_result.append((test_name, result))
 
         if sum(t[1] for t in test_result) == 0:
