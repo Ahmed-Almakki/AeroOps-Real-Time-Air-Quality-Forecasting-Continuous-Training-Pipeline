@@ -89,11 +89,12 @@ def run_optmization(
     if len(X_train) == 0 or len(Y_train) == 0 or len(X_test) == 0 or len(Y_test) == 0:
         raise ValueError("missing either train/test feature or train/test output")
 
+    now = datetime.now()
+    current_year = now.year
+    current_month = now.month
+
     try:
         logging.info("Starting Processing data...")
-        now = datetime.now()
-        current_year = now.year
-        current_month = now.month
 
         def objective(params):
             logging.info("Running trials...")
