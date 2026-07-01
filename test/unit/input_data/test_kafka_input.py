@@ -12,12 +12,13 @@ class Test_KafkaInput:
         mock_consumer_instance = mock_consumer.return_value
 
         mock_msg = MagicMock()
+        conf = {'key': 'value'}
         # because when the funcion do msg.error it find there is no error
         mock_msg.error.return_value = None
         mock_msg.value.return_value = b'{"status": "successfully delivered message"}'
         mock_consumer_instance.poll.return_value = mock_msg
 
-        kafka_input = KafkaInput(topic="test_topic")
+        kafka_input = KafkaInput(topic="test_topic", conf=conf)
         result = kafka_input.get_single_message()
 
         assert type(result) == dict
@@ -29,10 +30,10 @@ class Test_KafkaInput:
     def test_get_single_message_returns_none(self, mock_consumer):
         """Test the scenario where poll() times out and returns None."""
         mock_consumer_instance = mock_consumer.return_value
-
+        conf = {'key': 'value'}
         mock_consumer_instance.poll.return_value = None
 
-        kafka_input = KafkaInput(topic="test_topic")
+        kafka_input = KafkaInput(topic="test_topic", conf=conf)
         result = kafka_input.get_single_message()
 
         assert result is None
@@ -41,7 +42,7 @@ class Test_KafkaInput:
     def test_get_single_message_raises_kafka_exception(self, mock_consumer):
         """Test the scenario where poll() returns a message with a fatal error."""
         mock_consumer_instance = mock_consumer.return_value
-
+        conf = {'key': 'value'}
         mock_msg = MagicMock()
 
         mock_error = MagicMock()
@@ -52,7 +53,7 @@ class Test_KafkaInput:
 
         mock_consumer_instance.poll.return_value = mock_msg
 
-        kafka_input = KafkaInput(topic="test_topic")
+        kafka_input = KafkaInput(topic="test_topic", conf=conf)
 
         with pytest.raises(KafkaException):
             kafka_input.get_single_message()

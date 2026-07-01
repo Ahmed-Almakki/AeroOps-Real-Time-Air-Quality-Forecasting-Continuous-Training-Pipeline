@@ -5,21 +5,17 @@ from datetime import datetime
 import mlflow
 import pandas as pd
 from dotenv import load_dotenv
-from mlflow import MlflowClient
 from mlflow.entities import ViewType
 from sklearn.metrics import root_mean_squared_error
+
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 load_dotenv()
 
-client = MlflowClient()
-now = datetime.now()
-current_month = now.month
-current_year = now.year
-run_name = f"Run_{current_month}_{current_year}"
 
 
-def get_experment():
+
+def get_experment(client):
     try:
         mlflow.set_tracking_uri(os.getenv('MLFLOW_SERVER'))
         experiment_name = os.getenv('MLFLOW_EXPERIMENT_NAME')
@@ -30,16 +26,20 @@ def get_experment():
         return None
 
 
-def register_best_model() -> None:
+def register_best_model(client) -> None:
     """
     Register the best model(s) from the MLflow experiment based on the lowest RMSE metric.
     Parameters:
         top_n (int): The number of top models to register based on RMSE. Default is 1.
         delete_unwanted (bool): Whether to delete unwanted runs. Default is True.
     """
+    now = datetime.now()
+    current_month = now.month
+    current_year = now.year
+    run_name = f"Run_{current_month}_{current_year}"
     try:
         logging.info("Start the Process of Registring the model...")
-        experiment = get_experment()
+        experiment = get_experment(client)
         if experiment is None:
             logging.error("Experiment not found.")
             return
@@ -62,7 +62,7 @@ def register_best_model() -> None:
 
         run_id = runs[0].info.run_id
         model_uri = f"runs:/{run_id}/model"
-        new_model_check = compare_models(run_id)
+        new_model_check = compare_models(run_id, client)
         if new_model_check:
             registerd_model = mlflow.register_model(
                 model_uri=model_uri, name=os.getenv("REGISTERD_MODEL")
@@ -82,7 +82,7 @@ def register_best_model() -> None:
         logging.error("Error occurred while registering the best model: %s", e)
 
 
-def compare_models(best_run_id) -> bool:
+def compare_models(best_run_id, client) -> bool:
     try:
         logging.info("Start comparing the two models...")
         model_name = os.getenv("REGISTERD_MODEL")
@@ -107,7 +107,7 @@ def compare_models(best_run_id) -> bool:
         # comparing both models
         if new_model_result < old_model_result:
             logging.info("The new model is performing better than the old one")
-            check_archive = archive_old_model()
+            check_archive = archive_old_model(client)
 
             if check_archive:
                 logging.info("Old model registerd as archive")
@@ -146,7 +146,7 @@ def predict(model) -> float:
         raise e
 
 
-def archive_old_model() -> bool:
+def archive_old_model(client) -> bool:
     try:
         logging.info("Initiating archive process for the old model...")
         old_model = client.get_model_version_by_alias(
