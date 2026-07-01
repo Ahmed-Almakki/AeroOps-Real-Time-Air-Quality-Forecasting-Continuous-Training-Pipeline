@@ -10,9 +10,9 @@ mlflow:
     volumes:
       - mlflow_artifact_volume:/mlflow/artifacts
 command: >
-    mlflow server 
+    mlflow server
       --backend-store-uri postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
-      --default-artifact-root /mlflow/artifacts 
+      --default-artifact-root /mlflow/artifacts
       --host 0.0.0.0
       --port 5000
 
@@ -96,7 +96,7 @@ because mlflow is inside container and my python script is in my local pc, i hav
 
 ### C) Immutable Code:
 #### dockerfile:
-* i had two options either copy my code insided the dockerfile and create immutable image, 
+* i had two options either copy my code insided the dockerfile and create immutable image,
 * problem with this approach is if i have to change something in the code i had to stop the container and then updated and rebuild it and then run again
 * the other option is to just create the image using the dockefile and make the image already holding the dependecies it needs like (pandas - mlflow - ...) so that only need to fetch the code and the container have everything ready for it to run
 * this is better because you don't need to stop the container the only thing need is to update the code and re-upload it to github and thats is it
@@ -111,3 +111,6 @@ because mlflow is inside container and my python script is in my local pc, i hav
 * first time the mlflow was running in local host during development
 * after dockerizing we need to connect using the docker network, hence **--host 0.0.0.0** which expose the service to other container
 * using the service name as host **http://main_flow:5000**
+
+## Prefect
+* In order to test the task without using prefect, just the function you have to call the function inside the test like this **function_name.fn()**
