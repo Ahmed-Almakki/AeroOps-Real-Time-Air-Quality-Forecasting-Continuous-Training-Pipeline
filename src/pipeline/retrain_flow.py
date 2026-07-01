@@ -2,6 +2,7 @@ import os
 from datetime import datetime
 
 import mlflow
+from mlflow import MlflowClient
 import pandas as pd
 from dotenv import load_dotenv
 from prefect import flow, task, get_run_logger
@@ -158,9 +159,10 @@ def run_optmization(
 @task(name="evaluate_and_register")
 def register_task():
     logger = get_run_logger()
+    client = MlflowClient()
     try:
         logger.info("Starting evaluation against golden dataset...")
-        register_best_model()
+        register_best_model(client)
         logger.info("Evaluation Complete")
     except Exception as e:
         logger.error("Faild to evaluate and register model due to: %s", e)
