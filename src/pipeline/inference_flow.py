@@ -9,6 +9,7 @@ from src.input_data.kafka_input import KafkaInput
 from ..data_prep.process_input import process_input
 
 load_dotenv()
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -39,8 +40,14 @@ def inference(input_data: pd.DataFrame):
 
 if __name__ == "__main__":
     try:
+        kafka_conf = {
+            'bootstrap.servers': os.getenv("BOOTSTRAP_SERVER"),
+            'group.id': 'my_group',
+            'auto.offset.reset': 'earliest',
+            'enable.auto.commit': False,
+        }
         logging.info("Starting to ingest input data from Kafka topic.")
-        kafka_input = KafkaInput(topic=os.getenv("KAFKA_TOPIC"))
+        kafka_input = KafkaInput(topic=os.getenv("KAFKA_TOPIC"), conf=kafka_conf)
 
         while True:
             msg = kafka_input.get_single_message()

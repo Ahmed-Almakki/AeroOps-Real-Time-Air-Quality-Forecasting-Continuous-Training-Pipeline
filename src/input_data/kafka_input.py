@@ -7,12 +7,6 @@ from confluent_kafka import Consumer, KafkaError, KafkaException
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 load_dotenv()
-conf = {
-    'bootstrap.servers': os.getenv("BOOTSTRAP_SERVER"),
-    'group.id': 'my_group',
-    'auto.offset.reset': 'earliest',
-    'enable.auto.commit': False,
-}
 
 
 class KafkaInput:
@@ -22,7 +16,7 @@ class KafkaInput:
     The consume method continuously polls for messages, processes them, and commits the offsets.
     """
 
-    def __init__(self, topic):
+    def __init__(self, topic, conf):
         self.consumer = Consumer(conf)
         self.consumer.subscribe([topic])
 
