@@ -48,7 +48,7 @@ def read_data_from_db() -> tuple[pd.DataFrame, pd.DataFrame]:
         with Session(engine) as session:
             query = text(f"""
                 SELECT * FROM {os.getenv('TABLE_NAME')}
-                WHERE updated >= NOW() - INTERVAL '24 HOURS'
+                WHERE updated >= NOW() - INTERVAL '48 HOURS'
                 ORDER BY updated DESC
                 LIMIT 48;
             """)
@@ -97,7 +97,7 @@ def data_report(current_data: pd.DataFrame, reference_data: pd.DataFrame) -> dic
 
         my_eval = report.run(reference_data=reference_eval, current_data=current_eval)
         my_eval.save_html(
-            f"/opt/prefect/reports/drift_report_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.html"
+            f"{os.getenv('REPORTS_DIR')}/drift_report_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.html"
         )
         logger.info("Drift check completed successfully.")
 
@@ -176,7 +176,7 @@ def model_performance_report(current_data: pd.DataFrame, refrence_data: pd.DataF
         model_performance_eval = report.run(current_data=cur_data, reference_data=ref_data)
 
         model_performance_eval.save_html(
-            f"/opt/prefect/reports/model_performance_check_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.html"
+            f"{os.getenv('REPORTS_DIR')}/model_performance_check_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.html"
         )
         logger.info("Model performance check completed successfully.")
 

@@ -48,6 +48,8 @@ services:
 
   prefect-worker:
     image: prefect-pollution:0.0.4
+    env_file:
+     - .env
     environment:
       - MLFLOW_SERVER=${MLFLOW_SERVER}
       - MLFLOW_EXPERIMENT_NAME=${MLFLOW_EXPERIMENT_NAME}
@@ -70,5 +72,3 @@ services:
 networks:
   prefect_network:
     driver: bridge
-
-  
