@@ -26,7 +26,15 @@ def isolated_mlflow():
         os.environ["REGISTERD_MODEL"] = "test_model"
         db_path = os.path.join(temp_dir, "mlflow.db")
         mlflow.set_tracking_uri(f"sqlite:///{db_path}")
-        mlflow.set_experiment("test_experiment")
+
+        artifact_path = os.path.join(temp_dir, "mlruns")
+
+        experiment_id = mlflow.create_experiment(
+            "test_experiment",
+            artifact_location=f"file://{artifact_path}"
+        )
+
+        mlflow.set_experiment(experiment_id=experiment_id)
 
         dummy_data = pd.DataFrame({"PM2.5": [10.5, 12.0], "feature1": [1, 2]})
         csv_path = "./golden_dataset.csv"
