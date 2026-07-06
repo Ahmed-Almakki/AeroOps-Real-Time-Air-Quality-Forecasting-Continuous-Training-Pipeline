@@ -157,12 +157,11 @@ def run_optmization(
 
 
 @task(name="evaluate_and_register")
-def register_task():
+def register_task(client, exp_name):
     logger = get_run_logger()
-    client = MlflowClient()
     try:
         logger.info("Starting evaluation against golden dataset...")
-        register_best_model(client)
+        register_best_model(client, exp_name)
         logger.info("Evaluation Complete")
     except Exception as e:
         logger.error("Faild to evaluate and register model due to: %s", e)
@@ -172,15 +171,18 @@ def register_task():
 @flow(name="main_flow", retries=5, retry_delay_seconds=10)
 def main():
     logger = get_run_logger()
-    mlflow.set_tracking_uri(os.getenv('MLFLOW_SERVER'))
-    mlflow.set_experiment(os.getenv('MLFLOW_EXPERIMENT_NAME'))
+    exp_name = os.getenv('MLFLOW_EXPERIMENT_NAME')
+    track_uri = os.getenv('MLFLOW_SERVER')
+    mlflow.set_tracking_uri(uri=track_uri)
+    mlflow.set_experiment(exp_name)
+    client = MlflowClient()
     try:
         logger.info("Start the main flow...")
         train, test = fetch_data()
         x_train, y_train = input_output_split(train)
         x_test, y_test = input_output_split(test)
-        run_optmization(100, x_train, y_train, x_test, y_test)
-        register_task()
+        run_optmization(x_train, y_train, x_test, y_test, 100)
+        register_task(client, exp_name)
         logger.info("Successfully finish training FLow")
     except Exception as e:
         logger.error("Main Flow faild due to %s", e)

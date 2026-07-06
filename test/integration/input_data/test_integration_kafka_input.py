@@ -4,6 +4,9 @@ import pytest
 from src.input_data.kafka_input import KafkaInput
 
 
+import os
+print("\n--- DOCKER HOST IS currently:", os.environ.get("DOCKER_HOST"), "---\n")
+
 
 def delivery_report(err, msg):
     if err is not None:
@@ -12,7 +15,7 @@ def delivery_report(err, msg):
         print(f"Record {msg.key()} successfully produced to {msg.topic()} [{msg.partition()}] at offset {msg.offset()}")
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def kafka():
     with KafkaContainer() as kafka:
         connection = kafka.get_bootstrap_server()

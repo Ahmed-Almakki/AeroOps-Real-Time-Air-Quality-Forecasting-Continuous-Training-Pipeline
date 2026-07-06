@@ -13,20 +13,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 load_dotenv()
 
 
-
-
-def get_experment(client):
-    try:
-        mlflow.set_tracking_uri(os.getenv('MLFLOW_SERVER'))
-        experiment_name = os.getenv('MLFLOW_EXPERIMENT_NAME')
-        experiment = client.get_experiment_by_name(experiment_name)
-        return experiment
-    except Exception as e:
-        logging.error("Couldn't get experiment due to %s", e)
-        return None
-
-
-def register_best_model(client) -> None:
+def register_best_model(client, exp_name) -> None:
     """
     Register the best model(s) from the MLflow experiment based on the lowest RMSE metric.
     Parameters:
@@ -39,7 +26,7 @@ def register_best_model(client) -> None:
     run_name = f"Run_{current_month}_{current_year}"
     try:
         logging.info("Start the Process of Registring the model...")
-        experiment = get_experment(client)
+        experiment = client.get_experiment_by_name(exp_name)
         if experiment is None:
             logging.error("Experiment not found.")
             return
@@ -139,6 +126,8 @@ def predict(model) -> float:
         except Exception as e:
             logging.error("Faild to load golden data set due to %s", e)
         y = golden_df.pop("PM2.5")
+        if "wd" in golden_df.columns:
+            golden_df = pd.get_dummies(golden_df, columns=['wd'])
         y_predict = model.predict(golden_df)
         rmse = root_mean_squared_error(y, y_predict)
         return rmse
