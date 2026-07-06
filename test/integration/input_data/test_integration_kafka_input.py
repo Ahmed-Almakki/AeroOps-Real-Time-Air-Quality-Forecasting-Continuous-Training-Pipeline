@@ -12,7 +12,7 @@ def delivery_report(err, msg):
         print(f"Record {msg.key()} successfully produced to {msg.topic()} [{msg.partition()}] at offset {msg.offset()}")
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def kafka():
     with KafkaContainer() as kafka:
         connection = kafka.get_bootstrap_server()

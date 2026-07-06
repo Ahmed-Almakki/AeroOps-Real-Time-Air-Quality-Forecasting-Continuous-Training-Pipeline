@@ -1,0 +1,19 @@
+artifact_path: /home/ahmed-sulieman/Desktop/AI_projects/Air_Pol/mlruns/1/models/m-d63f60dfa3d246d0afc86830212e61b0/artifacts
+flavors:
+  python_function:
+    cloudpickle_version: 3.1.2
+    code: null
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.pyfunc.model
+    python_model: python_model.pkl
+    python_version: 3.13.11
+    streamable: false
+mlflow_version: 3.11.1
+model_id: m-d63f60dfa3d246d0afc86830212e61b0
+model_size_bytes: 158
+model_uuid: m-d63f60dfa3d246d0afc86830212e61b0
+prompts: null
+run_id: 98d7e545b0cb4824b3cf59d41583788d
+utc_time_created: '2026-07-06 08:58:06.430583'

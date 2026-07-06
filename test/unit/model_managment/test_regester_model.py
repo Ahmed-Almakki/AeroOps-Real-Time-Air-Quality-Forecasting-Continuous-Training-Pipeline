@@ -6,16 +6,12 @@ from src.model_managment.regester_model import compare_models, register_best_mod
 
 class Test_register:
     @patch("mlflow.client")
-    @patch("src.model_managment.regester_model.get_experment")
     @patch("src.model_managment.regester_model.compare_models")
     @patch("mlflow.register_model")
     @patch("os.getenv")
-    def test_register_best_model_happy_path(self, mock_getenv, mock_register, mock_compare, mock_get_exp, mock_client):
+    def test_register_best_model_happy_path(self, mock_getenv, mock_register, mock_compare, mock_client):
         mock_getenv.return_value = "my_awesome_model"
 
-        mock_experiment = MagicMock()
-        mock_experiment.experiment_id = "exp_123"
-        mock_get_exp.return_value = mock_experiment
 
         mock_run = MagicMock()
         mock_run.info.run_id = "best_run_999"
@@ -29,7 +25,7 @@ class Test_register:
 
         # mock_client_instance = mock_client.return_value
 
-        register_best_model(mock_client)
+        register_best_model(mock_client, exp_name="non_existent_experiment")
 
 
         mock_register.assert_called_once_with(
@@ -44,27 +40,24 @@ class Test_register:
         )
 
     @patch("mlflow.client")
-    @patch("src.model_managment.regester_model.get_experment")
-    def test_register_best_model_no_experiment(self, mock_get_exp, mock_client):
-        mock_get_exp.return_value = None
+    def test_register_best_model_no_experiment(self, mock_client):
+
         mock_client_instance = mock_client.return_value
 
-        register_best_model(mock_client_instance)
+        register_best_model(mock_client_instance, exp_name="non_existent_experiment")
 
         mock_client.search_runs.assert_not_called()
 
 
     @patch("mlflow.client")
-    @patch("src.model_managment.regester_model.get_experment")
     @patch("src.model_managment.regester_model.compare_models")
-    def test_register_best_model_no_runs_exist(self, mock_compare, mock_get_exp, mock_client):
+    def test_register_best_model_no_runs_exist(self, mock_compare, mock_client):
         mock_experiment = MagicMock()
         mock_experiment.experiment_id = "exp_123"
-        mock_get_exp.return_value = mock_experiment
 
         mock_client.search_runs.return_value = []
         mock_client_instance = mock_client.return_value
-        register_best_model(mock_client)
+        register_best_model(mock_client, exp_name="non_existent_experiment")
 
         mock_compare.assert_not_called()
 
