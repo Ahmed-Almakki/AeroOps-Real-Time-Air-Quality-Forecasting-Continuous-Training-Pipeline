@@ -4,6 +4,9 @@ import pytest
 from src.input_data.kafka_input import KafkaInput
 
 
+import os
+print("\n--- DOCKER HOST IS currently:", os.environ.get("DOCKER_HOST"), "---\n")
+
 
 def delivery_report(err, msg):
     if err is not None:

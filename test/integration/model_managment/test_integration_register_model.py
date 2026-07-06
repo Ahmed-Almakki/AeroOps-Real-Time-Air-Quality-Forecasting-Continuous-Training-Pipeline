@@ -1,5 +1,6 @@
 from datetime import datetime
 import pytest
+from unittest.mock import patch
 import pandas as pd
 import tempfile
 import mlflow
@@ -70,7 +71,6 @@ def test_register_best_model_new_better():
     with mlflow.start_run(run_name=f"Run_{now.month - 1}_{now.year}") as previous_run:
         previous_run_id = previous_run.info.run_id
         mlflow.pyfunc.log_model(artifact_path="model", python_model=PreviousDummyModel(), registered_model_name=os.getenv("REGISTERD_MODEL"))
-        mlflow.log_metric("rmse", 0.5)
     client.set_registered_model_alias(name=os.getenv("REGISTERD_MODEL"), alias="production", version="1")
 
 
@@ -89,3 +89,29 @@ def test_register_best_model_new_better():
 
     archive_version = client.get_model_version_by_alias(name=model_name, alias="archive")
     assert archive_version.run_id == previous_run_id, "Old model should be aliased as archive."
+
+
+
+@patch('src.model_managment.regester_model.logging')
+def test_register_best_model_old_better(mock_logging):
+    client = MlflowClient()
+
+    now = datetime.now()
+
+    with mlflow.start_run(run_name=f"Run_{now.month - 1}_{now.year}") as previous_run:
+        previous_run_id = previous_run.info.run_id
+        mlflow.pyfunc.log_model(artifact_path="model", python_model=DummyModel(), registered_model_name=os.getenv("REGISTERD_MODEL"))
+    client.set_registered_model_alias(name=os.getenv("REGISTERD_MODEL"), alias="production", version="1")
+
+
+    with mlflow.start_run(run_name=f"Run_{now.month}_{now.year}") as current_run:
+        current_run_id = current_run.info.run_id
+        mlflow.pyfunc.log_model(artifact_path="model", python_model=PreviousDummyModel())
+        mlflow.log_metric("rmse", 0.5)
+        mlflow.set_tag("mlflow.runName", f"Run_{now.month}_{now.year}")
+
+    register_best_model(client=client, exp_name="test_experiment")
+
+    assert mock_logging.warning.call_count > 0
+    # ensure the specific warning message about old model being better was logged
+    assert any("The old model Still the production model" in str(call.args) for call in mock_logging.warning.call_args_list)

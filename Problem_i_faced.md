@@ -112,5 +112,9 @@ because mlflow is inside container and my python script is in my local pc, i hav
 * after dockerizing we need to connect using the docker network, hence **--host 0.0.0.0** which expose the service to other container
 * using the service name as host **http://main_flow:5000**
 
+# Test
 ## Prefect
 * In order to test the task without using prefect, just the function you have to call the function inside the test like this **function_name.fn()**
+## kafka test container
+* the test always use some port and it isn't working, until i use this command **rm ~/.testcontainers.properties**
+* The problem caused by testcontainer desktop app, because it forces test containers to be routed to him first, it force to use the port 40145 which is causing the problem
