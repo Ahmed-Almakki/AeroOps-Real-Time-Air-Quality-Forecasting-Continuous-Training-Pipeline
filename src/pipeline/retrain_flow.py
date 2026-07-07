@@ -169,7 +169,7 @@ def register_task(client, exp_name):
 
 
 @flow(name="main_flow", retries=5, retry_delay_seconds=10)
-def main():
+def main(n_trails: int = 100):
     logger = get_run_logger()
     exp_name = os.getenv('MLFLOW_EXPERIMENT_NAME')
     track_uri = os.getenv('MLFLOW_SERVER')
@@ -181,7 +181,7 @@ def main():
         train, test = fetch_data()
         x_train, y_train = input_output_split(train)
         x_test, y_test = input_output_split(test)
-        run_optmization(x_train, y_train, x_test, y_test, 100)
+        run_optmization(x_train, y_train, x_test, y_test, n_trails)
         register_task(client, exp_name)
         logger.info("Successfully finish training FLow")
     except Exception as e:
