@@ -1,6 +1,7 @@
 import os
 import logging
-
+import mlflow
+from mlflow import MlflowClient
 import pandas as pd
 from dotenv import load_dotenv
 
@@ -30,9 +31,18 @@ def processed_data(input_data: pd.DataFrame) -> pd.DataFrame:
 def inference(input_data: pd.DataFrame):
     try:
         logging.info("Starting the inference flow.")
-        print("NOW YOU ARE IN PREDCITION")
-        logging.info("Inference flow completed successfully.")
-        return 0  # Replace with actual prediction
+
+        model_name = os.getenv("REGISTERD_MODEL")
+        alias = "production"
+
+        model_uri = f"models:/{model_name}@{alias}"
+        model = mlflow.pyfunc.load_model(model_uri)
+
+        result = model.predict(input_data)
+
+        logging.info("Inference flow completed successfully with result: %s", result)
+
+        return result
     except Exception as e:
         logging.error("Error occurred in the inference flow: %s", e)
         return None

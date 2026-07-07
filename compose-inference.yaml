@@ -1,6 +1,6 @@
 services:
   main_flow:
-    image: main_flow:0.0.2
+    image: main_flow:0.0.3
     restart: always
     environment:
       - BOOTSTRAP_SERVER=${kafka_bootstrap_servers}
