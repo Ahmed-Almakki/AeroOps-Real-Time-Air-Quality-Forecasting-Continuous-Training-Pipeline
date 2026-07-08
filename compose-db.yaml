@@ -1,18 +1,18 @@
 services:
   db:
-    image: pg:0.0.4
+    image: pg:0.0.6
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
-    
+
     ports:
       - "5433:5432"
 
     networks:
       - prefect_network
       - default
-    
+
     healthcheck:
       # Using $$ to reference the container's internal environment variables
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]

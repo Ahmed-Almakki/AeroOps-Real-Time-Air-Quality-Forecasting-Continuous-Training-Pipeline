@@ -22,7 +22,7 @@ services:
         condition: service_healthy
 
   prefect-pool:
-    image: prefect-pollution:0.0.5
+    image: prefect-pollution:0.0.1
     env_file:
      - .env
     environment:
@@ -33,7 +33,7 @@ services:
     command: >
       bash -c "
       prefect work-pool create "my-process-pool" --type process || true &&
-      prefect work-pool set-concurrency-limit "my-process-pool" 1 || true &&
+      prefect work-pool set-concurrency-limit "my-process-pool" 2 || true &&
       python -m src.pipeline.drift_check &&
       python -m src.pipeline.retrain_flow
       "
@@ -47,7 +47,7 @@ services:
 
 
   prefect-worker:
-    image: prefect-pollution:0.0.5
+    image: prefect-pollution:0.0.1
     env_file:
      - .env
     environment:

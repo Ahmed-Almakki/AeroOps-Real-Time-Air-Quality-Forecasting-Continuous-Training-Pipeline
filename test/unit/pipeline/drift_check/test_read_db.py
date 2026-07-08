@@ -8,7 +8,7 @@ class Test_readDB:
     @patch('src.pipeline.drift_check.Session')
     @patch('os.getenv')
     def test_read_from_db(self, mock_getenv, mock_session, mock_engine, mock_get_run_logger):
-        mock_getenv.side_effect = ['ahmed', '123', 'host', 'db', 'table_name']
+        mock_getenv.side_effect = ['ahmed', '123', 'host', 'db', 'table_name', 'prediction_table_name']
 
         mock_result = MagicMock() # mock the result of session.execute
 
@@ -37,7 +37,7 @@ class Test_readDB:
     @patch('src.pipeline.drift_check.Session')
     @patch('os.getenv')
     def test_read_from_db_insufficient_data(self, mock_getenv, mock_session, mock_engine, mock_get_run_logger):
-        mock_getenv.side_effect = ['ahmed', '123', 'host', 'db', 'table_name']
+        mock_getenv.side_effect = ['ahmed', '123', 'host', 'db', 'table_name', 'prediction_table_name']
 
         mock_result = MagicMock()
 
@@ -60,7 +60,7 @@ class Test_readDB:
     @patch('src.pipeline.drift_check.Session')
     @patch('os.getenv')
     def test_read_from_db_missing_column(self, mock_getenv, mock_session, mock_engine, mock_get_run_logger):
-        mock_getenv.side_effect = ['ahmed', '123', 'host', 'db', 'table_name']
+        mock_getenv.side_effect = ['ahmed', '123', 'host', 'db', 'table_name', 'prediction_table_name']
 
         mock_result = MagicMock()
 

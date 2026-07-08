@@ -14,6 +14,7 @@ def configuration(monkeypatch, postgres_container):
     monkeypatch.setenv("POSTGRES_HOST", postgres_container["POSTGRES_HOST"])
     monkeypatch.setenv("POSTGRES_DB", postgres_container["POSTGRES_DB"])
     monkeypatch.setenv("TABLE_NAME", postgres_container["TABLE_NAME"])
+    monkeypatch.setenv("PREDICTION_TABLE_NAME", postgres_container["PREDICTION_TABLE_NAME"])
     monkeypatch.setenv("REPORTS_DIR", "/tmp")
     monkeypatch.setenv("SLACK_WEBHOOK_URL", "N/A")
 
@@ -38,6 +39,7 @@ def postgres_container():
         port = postgres.get_exposed_port(5432)
         host_and_port = f"{host}:{port}"
         table_name = "sensor_data_test"
+        prediction_table_name = "air_pollution_predictions_test"
 
         conn = psycopg2.connect(user=user,
                 password=password,
@@ -50,16 +52,30 @@ def postgres_container():
             CREATE TABLE {table_name} (
                 updated TIMESTAMP, so2 FLOAT, no2 FLOAT, co FLOAT, o3 FLOAT,
                 temp FLOAT, pres FLOAT, dewp FLOAT, wspm FLOAT,
-                prediction FLOAT, real_output FLOAT, wd VARCHAR
+                reading_time TIMESTAMP, real_output FLOAT, wd VARCHAR
             );
         """)
 
-        now = datetime.now()
+        cursor.execute(f"""
+            CREATE TABLE {prediction_table_name} (
+                id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY NOT NULL,
+                reading_time TIMESTAMP NOT NULL,
+                prediction FLOAT NOT NULL
+            );
+        """)
+
+        now = datetime.now().replace(minute=0, second=0, microsecond=0)
         for i in range(48):
             timestamp = now - timedelta(hours=i)
             cursor.execute(f"""
                 INSERT INTO {table_name} VALUES (
-                    '{timestamp}', 1.0, 1.0, 1.0, 1.0, 20.0, 1000.0, 15.0, 2.0, 1.0, 1.0, 'N'
+                    '{timestamp}', 1.0, 1.0, 1.0, 1.0, 20.0, 1000.0, 15.0, 2.0, '{timestamp}', 1.0, 'N'
+                );
+            """)
+
+            cursor.execute(f"""
+                INSERT INTO {prediction_table_name} (reading_time, prediction) VALUES (
+                    '{timestamp}', 1.0
                 );
             """)
         conn.commit()
@@ -70,7 +86,8 @@ def postgres_container():
             "POSTGRES_PASSWORD": password,
             "POSTGRES_HOST": host_and_port,
             "POSTGRES_DB": db,
-            "TABLE_NAME": table_name
+            "TABLE_NAME": table_name,
+            "PREDICTION_TABLE_NAME": prediction_table_name
         }
 
 
@@ -87,6 +104,7 @@ def test_daily_drift(postgres_container, monkeypatch, caplog):
     monkeypatch.setenv("POSTGRES_HOST", postgres_container["POSTGRES_HOST"])
     monkeypatch.setenv("POSTGRES_DB", postgres_container["POSTGRES_DB"])
     monkeypatch.setenv("TABLE_NAME", postgres_container["TABLE_NAME"])
+    monkeypatch.setenv("PREDICTION_TABLE_NAME", postgres_container["PREDICTION_TABLE_NAME"])
     monkeypatch.setenv("REPORTS_DIR", "/tmp")  # Set a temporary directory for reports
 
     monkeypatch.setenv("SLACK_WEBHOOK_URL", "N/A")
@@ -104,14 +122,14 @@ def test_daily_drift_bad_performance(mock_run_deployment, postgres_container, mo
     conn = configuration(monkeypatch, postgres_container)
     cursor = conn.cursor()
     # Change all predictions to 0.0 to simulate terrible model performance
-    table_name = postgres_container["TABLE_NAME"]
+    table_name = postgres_container["PREDICTION_TABLE_NAME"]
     cursor.execute(f"""
         UPDATE {table_name}
         SET prediction = 0.0
-        WHERE updated IN (
-            SELECT updated
+        WHERE reading_time IN (
+            SELECT reading_time
             FROM {table_name}
-            ORDER BY updated DESC
+            ORDER BY reading_time DESC
             LIMIT 24
         );
     """)
@@ -160,15 +178,25 @@ def test_daily_drift_bad_model_and_data_drift(postgres_container, monkeypatch, c
     cursor = conn.cursor()
 
     table_name = postgres_container["TABLE_NAME"]
+    prediction_table_name = postgres_container["PREDICTION_TABLE_NAME"]
     cursor.execute(f"""
         UPDATE {table_name}
         SET so2 = 100.0 ,no2 = 100.0, co = 100.0, o3 = 100.0,
-        temp = 100.0, pres = 100.0, dewp = 100.0, wspm = 100.0,
-        prediction = 0.0
-        WHERE updated IN (
-            SELECT updated
+        temp = 100.0, pres = 100.0, dewp = 100.0, wspm = 100.0
+        WHERE reading_time IN (
+            SELECT reading_time
             FROM {table_name}
-            ORDER BY updated DESC
+            ORDER BY reading_time DESC
+            LIMIT 24
+        );
+    """)
+    cursor.execute(f"""
+        UPDATE {prediction_table_name}
+        SET prediction = 0.0
+        WHERE reading_time IN (
+            SELECT reading_time
+            FROM {table_name}
+            ORDER BY reading_time DESC
             LIMIT 24
         );
     """)

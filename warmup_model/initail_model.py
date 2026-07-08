@@ -15,10 +15,13 @@ def read_file(file):
     try:
         df = pd.read_csv(file)
         df = df.drop(columns=['No', 'station', 'PM10', 'year', 'month', 'day', 'hour'])
+        df = df.rename(columns={"PM2.5": "real_output"})
+        print("df columns %s", df.columns)
+        df['real_output'] = df["real_output"].shift(-1)
         df = df.dropna()
         if "wd" in df.columns:
             df = pd.get_dummies(df, columns=['wd'])
-        y = df.pop('PM2.5')
+        y = df.pop('real_output')
         return df, y
     except Exception as e:
         raise e
