@@ -2,6 +2,8 @@ services:
   main_flow:
     image: main_flow:0.0.3
     restart: always
+    env_file:
+      - .env
     environment:
       - BOOTSTRAP_SERVER=${kafka_bootstrap_servers}
       - KAFKA_TOPIC=${KAFKA_TOPIC}

@@ -1,4 +1,4 @@
-"No","year","month","day","hour","PM2.5","PM10","SO2","NO2","CO","O3","TEMP","PRES","DEWP","RAIN","wd","WSPM","station"
+"No","year","month","day","hour","PM2.5","PM10","so2","no2","co","o3","temp","pres","dewp","rain","wd","wspm","station"
 1,2013,3,1,0,4,4,14,20,300,69,-0.7,1023,-18.8,0,"NNW",4.4,"Guanyuan"
 2,2013,3,1,1,4,4,13,17,300,72,-1.1,1023.2,-18.2,0,"N",4.7,"Guanyuan"
 3,2013,3,1,2,3,3,10,19,300,69,-1.1,1023.5,-18.2,0,"NNW",5.6,"Guanyuan"

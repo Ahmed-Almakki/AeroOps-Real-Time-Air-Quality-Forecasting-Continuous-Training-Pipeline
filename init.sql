@@ -14,20 +14,28 @@ WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'prefect_db')\gexec
 -- Step 1: Create the table safely
 CREATE TABLE IF NOT EXISTS air_pollution (
  id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY NOT NULL,
+ reading_time TIMESTAMP NOT NULL,
  SO2 FLOAT NULL,
- NO2 FLOAT NULL, 
+ NO2 FLOAT NULL,
  CO FLOAT NULL,
  O3 FLOAT NULL,
  TEMP FLOAT NULL,
  PRES FLOAT NULL,
  DEWP FLOAT NULL,
  RAIN FLOAT NULL,
- wd VARCHAR(255) NULL, 
+ wd VARCHAR(255) NULL,
  WSPM FLOAT NULL,
  real_output FLOAT NULL,
- prediction FLOAT  NULL,
  created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
  updated TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+
+-- step 1.5: Create a prediction table to join with the air_pollution table
+CREATE TABLE IF NOT EXISTS air_pollution_predictions (
+    id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY NOT NULL,
+    reading_time TIMESTAMP NOT NULL,
+    prediction FLOAT NOT NULL
 );
 
 -- Step 2: Create a reusable function to update the timestamp

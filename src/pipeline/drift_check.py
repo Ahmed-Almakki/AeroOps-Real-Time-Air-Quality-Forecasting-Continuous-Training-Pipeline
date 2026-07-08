@@ -42,14 +42,16 @@ def read_data_from_db() -> tuple[pd.DataFrame, pd.DataFrame]:
     logger = get_run_logger()
     try:
         engine = create_engine(
-            f"postgresql+psycopg://{os.getenv('POSTGRES_USER')}:{os.getenv('POSTGRES_PASSWORD')}@{os.getenv('POSTGRES_HOST')}/{os.getenv('POSTGRES_DB')}"
+            f"postgresql+psycopg://{os.getenv('POSTGRES_USER')}:{os.getenv('POSTGRES_PASSWORD')}@{os.getenv('POSTGRES_HOST')}:{os.getenv('POSTGRES_PORT', '5432')}/{os.getenv('POSTGRES_DB')}"
         )
         logger.info("Fetching the last 24 rows of sensor data from the Database...")
         with Session(engine) as session:
             query = text(f"""
-                SELECT * FROM {os.getenv('TABLE_NAME')}
-                WHERE updated >= NOW() - INTERVAL '48 HOURS'
-                ORDER BY updated DESC
+                SELECT s.*, p.prediction FROM {os.getenv('TABLE_NAME')} AS s
+                JOIN {os.getenv('PREDICTION_TABLE_NAME')} AS p
+                    ON s.reading_time = p.reading_time
+                WHERE s.updated >= NOW() - INTERVAL '48 HOURS'
+                ORDER BY s.updated DESC
                 LIMIT 48;
             """)
             result = session.execute(query)
