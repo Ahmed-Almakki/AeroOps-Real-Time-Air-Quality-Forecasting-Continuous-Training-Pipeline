@@ -33,7 +33,7 @@ services:
     command: >
       bash -c "
       prefect work-pool create "my-process-pool" --type process || true &&
-      prefect work-pool set-concurrency-limit "my-process-pool" 1 || true &&
+      prefect work-pool set-concurrency-limit "my-process-pool" 2 || true &&
       python -m src.pipeline.drift_check &&
       python -m src.pipeline.retrain_flow
       "
