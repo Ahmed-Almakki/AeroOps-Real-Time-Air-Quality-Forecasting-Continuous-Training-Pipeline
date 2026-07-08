@@ -10,7 +10,6 @@ engine = create_engine(
 )
 file_name = "PRSA_Data_Wanshouxigong_20130301-20170228.csv"
 
-
 def read_excel(path):
     df = pd.read_csv(path)
     popout_list = ["No", "year", "day", "month", "hour", "station", "PM10"]
@@ -19,7 +18,7 @@ def read_excel(path):
     df["prediction"] = df["pm2.5"].shift(-1)
     df = df.dropna()
     df = df.rename(columns={"pm2.5": "real_output"})
-    test = df.tail(20)
+    test = df.head(30)
     test.to_sql(name=os.getenv("TABLE_NAME"), con=engine, if_exists="append", index=False)
 
 

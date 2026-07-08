@@ -251,13 +251,6 @@ def daily_drift():
         logger.info("Finish deployment successfully")
 
 
-# @flow(name="Flow-3-MLflow-Retrain")
-# def mlflow_retrain():
-#     print("Connecting to MLflow container...")
-#     print("Looping through 100 model combinations...")
-#     # (Your heavy loop to train models, track parameters, and pick the best one)
-
-
 if __name__ == "__main__":
     daily_drift.from_source(
         source="/opt/prefect/app", entrypoint="src/pipeline/drift_check.py:daily_drift"
