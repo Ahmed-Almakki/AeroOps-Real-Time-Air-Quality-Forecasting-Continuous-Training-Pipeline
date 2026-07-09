@@ -1,4 +1,4 @@
-PM2.5,SO2,NO2,CO,O3,TEMP,PRES,DEWP,RAIN,wd,WSPM
+pm2.5,so2,no2,co,o3,temp,pres,dewp,rain,wd,wspm
 5,4,12,200,85,-0.5,1024.5,-21.4,0,NNW,5.7
 8,6,14,200,84,-0.7,1025.1,-22.1,0,NW,3.9
 3,5,14,200,83,-1.2,1025.3,-24.6,0,NNW,5.3
