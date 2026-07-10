@@ -1,0 +1,74 @@
+services:
+  prefect_server:
+    image: prefecthq/prefect:3-latest
+    environment:
+    # http://prefect-server:4200/api instead of localhost becasue localhost will refer to inside th docker container not the host machine
+      - PREFECT_API_URL=http://127.0.0.1:4200/api
+      # 0.0.0.0 to allow access from outside the container
+      - PREFECT_API_DATABASE_CONNECTION_URL=postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/prefect_db
+    command: prefect server start --host 0.0.0.0
+    ports:
+      - "4200:4200"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4200/api/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    networks:
+      - prefect_network
+    depends_on:
+      db:
+        condition: service_healthy
+
+  prefect-pool:
+    image: prefect-pollution:0.0.7
+    env_file:
+     - .env
+    environment:
+      - PREFECT_API_URL=http://prefect_server:4200/api
+    volumes:
+      - ./reports:/opt/prefect/reports
+    working_dir: /opt/prefect/app
+    command: >
+      bash -c "
+      prefect work-pool create "my-process-pool" --type process || true &&
+      prefect work-pool set-concurrency-limit "my-process-pool" 2 || true &&
+      python -m src.pipeline.drift_check &&
+      python -m src.pipeline.retrain_flow
+      "
+    networks:
+      - prefect_network
+    depends_on:
+      prefect_server:
+        condition: service_healthy
+      mlflow_air:
+        condition: service_healthy
+
+
+  prefect-worker:
+    image: prefect-pollution:0.0.7
+    env_file:
+     - .env
+    environment:
+      - MLFLOW_SERVER=${MLFLOW_SERVER}
+      - MLFLOW_EXPERIMENT_NAME=${MLFLOW_EXPERIMENT_NAME}
+      - REGISTERD_MODEL=${REGISTERD_MODEL}
+      - POSTGRES_HOST=db
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - TABLE_NAME=air_pollution
+      - PREFECT_API_URL=http://prefect_server:4200/api
+    volumes:
+      - ./reports:/opt/prefect/reports
+    command: prefect worker start --pool "my-process-pool"
+    networks:
+      - prefect_network
+    depends_on:
+      prefect-pool:
+        condition: service_completed_successfully
+
+networks:
+  prefect_network:
+    driver: bridge

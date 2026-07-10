@@ -1,0 +1,10 @@
+name: 'Air_Quality_System'
+
+include:
+  - compose-db.yaml
+  - compose-kafka.yaml
+  - compose-kafka-connect.yaml
+  - compose-experiment-tracking.yaml
+  - compose-prefect.yaml
+  - compose-inference.yaml
+  - compose-ui.yaml

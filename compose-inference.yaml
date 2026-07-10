@@ -1,0 +1,18 @@
+services:
+  main_flow:
+    image: main_flow:0.0.4
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - BOOTSTRAP_SERVER=${kafka_bootstrap_servers}
+      - KAFKA_TOPIC=${KAFKA_TOPIC}
+
+    networks:
+      - prefect_network
+
+    depends_on:
+      kafka:
+        condition: service_healthy
+      connect-1:
+        condition: service_healthy
