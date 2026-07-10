@@ -8,3 +8,4 @@ df = conn.query("SELECT * FROM air_pollution limit 3")
 
 for row in df.itertuples():
     st.write(f"rows is {row}")
+print('a')
