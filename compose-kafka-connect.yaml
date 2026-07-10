@@ -15,7 +15,7 @@ services:
     depends_on:
       kafka:
         condition: service_healthy
-
+        
     environment:
       CONNECT_BOOTSTRAP_SERVERS: ${kafka_bootstrap_servers}
       CONNECT_GROUP_ID: "connect-cluster"
@@ -42,7 +42,7 @@ services:
 
       CONNECT_CONFIG_PROVIDERS: "env"
       CONNECT_CONFIG_PROVIDERS_ENV_CLASS: "org.apache.kafka.common.config.provider.EnvVarConfigProvider"
-
+      
       # 3. Pass the database secrets through the wall into this container
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -58,13 +58,13 @@ services:
       start_period: 60s
 
     command:
-      - bash
+      - bash 
       - -c
       - |
         echo "Starting deployment script in the background..."
         # The '&' is critical here so it runs in the background
         bash /kafka_connect/deploy_connect.sh &
-
+        
         echo "Starting Kafka Connect worker..."
         # This starts the actual foreground service
         /etc/confluent/docker/run
