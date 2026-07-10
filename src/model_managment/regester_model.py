@@ -1,7 +1,6 @@
 import os
 import logging
-from datetime import datetime
-
+from prefect import task, get_run_logger
 import mlflow
 import pandas as pd
 from dotenv import load_dotenv
@@ -12,23 +11,20 @@ from sklearn.metrics import root_mean_squared_error
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 load_dotenv()
 
-
-def register_best_model(client, exp_name) -> None:
+@task(name="register_best_model", retries=3, retry_delay_seconds=10)
+def register_best_model(client, exp_name, run_name) -> None:
     """
     Register the best model(s) from the MLflow experiment based on the lowest RMSE metric.
     Parameters:
         top_n (int): The number of top models to register based on RMSE. Default is 1.
         delete_unwanted (bool): Whether to delete unwanted runs. Default is True.
     """
-    now = datetime.now()
-    current_month = now.month
-    current_year = now.year
-    run_name = f"Run_{current_month}_{current_year}"
+    logger = get_run_logger()
     try:
-        logging.info("Start the Process of Registring the model...")
+        logger.info("Start the Process of Registring the model...")
         experiment = client.get_experiment_by_name(exp_name)
         if experiment is None:
-            logging.error("Experiment not found.")
+            logger.error("Experiment not found.")
             return
 
         experiment_id = experiment.experiment_id
@@ -41,11 +37,11 @@ def register_best_model(client, exp_name) -> None:
         )
 
         if not runs:
-            logging.warning("No runs found in experiment %s", experiment_id)
+            logger.warning("No runs found in experiment %s", experiment_id)
             return
 
         if len(runs) > 1:
-            logging.info("Multiple runs found. Start selecting the best model based on RMSE.")
+            logger.info("Multiple runs found. Start selecting the best model based on RMSE.")
 
         run_id = runs[0].info.run_id
         model_uri = f"runs:/{run_id}/model"
@@ -60,18 +56,20 @@ def register_best_model(client, exp_name) -> None:
                 alias="production",
                 version=registerd_model_version,
             )
-            logging.info("The new model is registerd as production")
+            logger.info("The new model is registerd as production")
         else:
-            logging.warning("The old model Still the production model")
+            logger.warning("The old model Still the production model")
 
-        # delete_unwanted_runs(run_ids_to_save, runs, client) if delete_unwanted else logging.info("Unwanted runs will not be deleted.")
+        # delete_unwanted_runs(run_ids_to_save, runs, client) if delete_unwanted else logger.info("Unwanted runs will not be deleted.")
     except Exception as e:
-        logging.error("Error occurred while registering the best model: %s", e)
+        logger.error("Error occurred while registering the best model: %s", e)
 
 
+@task(name="Comparing_the_models", retries=3, retry_delay_seconds=10)
 def compare_models(best_run_id, client) -> bool:
+    logger = get_run_logger()
     try:
-        logging.info("Start comparing the two models...")
+        logger.info("Start comparing the two models...")
         model_name = os.getenv("REGISTERD_MODEL")
         alias = "production"
 
@@ -88,26 +86,26 @@ def compare_models(best_run_id, client) -> bool:
 
             old_model_result = predict(old_model)
         except Exception as e:
-            logging.warning("Could not load old production model due to %s.", e)
+            logger.warning("Could not load old production model due to %s.", e)
             return True
 
         # comparing both models
         if new_model_result < old_model_result:
-            logging.info("The new model is performing better than the old one")
+            logger.info("The new model is performing better than the old one")
             check_archive = archive_old_model(client)
 
             if check_archive:
-                logging.info("Old model registerd as archive")
+                logger.info("Old model registerd as archive")
                 return True
 
-            logging.error(
+            logger.error(
                 "Faild to register old model as archive even though the new model is performing better.\nold_model result: %s\tnew_model result: %s",
                 old_model_result,
                 new_model_result,
             )
             return False
 
-        logging.warning(
+        logger.warning(
             "Old model is performing better than the new trained one.\nold_model_result: %s\tnew_model_result: %s",
             old_model_result,
             new_model_result,
@@ -115,29 +113,61 @@ def compare_models(best_run_id, client) -> bool:
         return False
 
     except Exception as e:
-        logging.error("Faild to compare the two models due to %s", e)
+        logger.error("Faild to compare the two models due to %s", e)
         raise
 
 
-def predict(model) -> float:
+@task(name="process_golden_data", retries=3, retry_delay_seconds=10)
+def process_golden_data(df):
+    logger = get_run_logger()
+    EXPECTED_FEATURES = [
+    'so2', 'no2', 'co', 'o3', 'temp', 'pres', 'dewp', 'rain', 'wspm',
+    'wd_E', 'wd_ENE', 'wd_ESE', 'wd_N', 'wd_NE', 'wd_NNE', 'wd_NNW',
+    'wd_NW', 'wd_S', 'wd_SE', 'wd_SSE', 'wd_SSW', 'wd_SW', 'wd_W',
+    'wd_WNW', 'wd_WSW', 'real_output'
+]
     try:
-        try:
-            golden_df = pd.read_csv("./golden_dataset.csv")
-        except Exception as e:
-            logging.error("Faild to load golden data set due to %s", e)
-        y = golden_df.pop("PM2.5")
-        if "wd" in golden_df.columns:
-            golden_df = pd.get_dummies(golden_df, columns=['wd'])
-        y_predict = model.predict(golden_df)
-        rmse = root_mean_squared_error(y, y_predict)
-        return rmse
+        logger.info("Start Processing Golden Dataset...")
+
+        df = df.rename(columns={'pm2.5': 'real_output'})
+        df = df.dropna()
+
+        if "wd" in df.columns:
+            df = pd.get_dummies(df, columns=['wd'])
+
+        df = df.reindex(columns=EXPECTED_FEATURES, fill_value=0)
+        logger.info("Successfully Finish Processing Golden Dataset, result with length of %s", len(df))
+        return df
     except Exception as e:
+        logger.error("Faild to process golden dataset due to %s", e)
         raise e
 
 
-def archive_old_model(client) -> bool:
+@task(name="predict", retries=3, retry_delay_seconds=10)
+def predict(model) -> float:
+    logger = get_run_logger()
     try:
-        logging.info("Initiating archive process for the old model...")
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        csv_path = os.path.join(current_dir, "golden_dataset.csv")
+        try:
+            golden_df = pd.read_csv(csv_path)
+            processed_df = process_golden_data(golden_df)
+        except Exception as e:
+            logger.error("Faild to load golden data set due to %s", e)
+        y = processed_df.pop("real_output")
+
+        y_predict = model.predict(processed_df)
+        rmse = root_mean_squared_error(y, y_predict)
+        return rmse
+    except Exception as e:
+        logger.error("Faild to predict due to %s", e)
+        raise e
+
+@task(name="archive_old_model", retries=3, retry_delay_seconds=10)
+def archive_old_model(client) -> bool:
+    logger = get_run_logger()
+    try:
+        logger.info("Initiating archive process for the old model...")
         old_model = client.get_model_version_by_alias(
             name=os.getenv("REGISTERD_MODEL"), alias="production"
         )
@@ -150,7 +180,7 @@ def archive_old_model(client) -> bool:
         )
         return True
     except Exception as e:
-        logging.error("Cant set alias to the old model due to: %s", e)
+        logger.error("Cant set alias to the old model due to: %s", e)
         raise
 
 
@@ -165,7 +195,7 @@ def archive_old_model(client) -> bool:
 #         None
 #     """
 #     if not run_ids:
-#         logging.warning("No run IDs provided for deletion.")
+#         logger.warning("No run IDs provided for deletion.")
 #         return
 #     try:
 #         print(f"type{type(client)}\t\t{type(run_ids)}")

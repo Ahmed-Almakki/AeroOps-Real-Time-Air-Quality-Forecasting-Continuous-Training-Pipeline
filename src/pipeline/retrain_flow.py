@@ -21,6 +21,13 @@ load_dotenv()
 @task(name="fetch_data", retries=3, retry_delay_seconds=10)
 def fetch_data() -> tuple[pd.DataFrame, pd.DataFrame]:
     logger = get_run_logger()
+    EXPECTED_FEATURES = [
+        'so2', 'no2', 'co', 'o3', 'temp', 'pres', 'dewp', 'rain', 'wspm',
+        'wd_E', 'wd_ENE', 'wd_ESE', 'wd_N', 'wd_NE', 'wd_NNE', 'wd_NNW',
+        'wd_NW', 'wd_S', 'wd_SE', 'wd_SSE', 'wd_SSW', 'wd_SW', 'wd_W',
+        'wd_WNW', 'wd_WSW', 'real_output'
+    ]
+
     try:
         engine = create_engine(
             f"postgresql+psycopg://{os.getenv('POSTGRES_USER')}:{os.getenv('POSTGRES_PASSWORD')}@{os.getenv('POSTGRES_HOST')}/{os.getenv('POSTGRES_DB')}"
@@ -28,7 +35,7 @@ def fetch_data() -> tuple[pd.DataFrame, pd.DataFrame]:
 
         with Session(engine) as session:
             query = text(f"""
-                SELECT so2, no2, co, o3, temp, pres, dewp, wspm, wd, real_output
+                SELECT so2, no2, co, o3, temp, pres, dewp, wspm, wd, rain, real_output
                 FROM {os.getenv("TABLE_NAME")}
             """)
             result = session.execute(query)
@@ -40,8 +47,11 @@ def fetch_data() -> tuple[pd.DataFrame, pd.DataFrame]:
         logger.info("Successfully fetched data: %s", len(data))
 
         df = pd.DataFrame(data, columns=result.keys())
+
         if 'wd' in df.columns:
             df = pd.get_dummies(df, columns=['wd'])
+
+        df = df.reindex(columns=EXPECTED_FEATURES, fill_value=0)
 
         threshold = int(len(df) * 0.1)
         test_df = df[:threshold].copy()
@@ -76,7 +86,8 @@ def run_optmization(
     Y_train: pd.DataFrame,
     X_test: pd.DataFrame,
     Y_test: pd.DataFrame,
-    num_trials: int = 100,
+    unique_run_name: str,
+    num_trials: int = 5,
 ) -> None:
     """
     Run the hyperparameter optimization process using Hyperopt.
@@ -90,9 +101,6 @@ def run_optmization(
     if len(X_train) == 0 or len(Y_train) == 0 or len(X_test) == 0 or len(Y_test) == 0:
         raise ValueError("missing either train/test feature or train/test output")
 
-    now = datetime.now()
-    current_year = now.year
-    current_month = now.month
 
     try:
         logging.info("Starting Processing data...")
@@ -100,7 +108,7 @@ def run_optmization(
         def objective(params):
             logging.info("Running trials...")
             try:
-                with mlflow.start_run(run_name=f"Run_{current_month}_{current_year}"):
+                with mlflow.start_run(run_name=unique_run_name):
                     mlflow.log_params(params)
                     model = RandomForestRegressor(**params)
                     model.fit(X_train, Y_train)
@@ -157,11 +165,11 @@ def run_optmization(
 
 
 @task(name="evaluate_and_register")
-def register_task(client, exp_name):
+def register_task(client, exp_name, run_name):
     logger = get_run_logger()
     try:
         logger.info("Starting evaluation against golden dataset...")
-        register_best_model(client, exp_name)
+        register_best_model(client, exp_name, run_name)
         logger.info("Evaluation Complete")
     except Exception as e:
         logger.error("Faild to evaluate and register model due to: %s", e)
@@ -169,8 +177,9 @@ def register_task(client, exp_name):
 
 
 @flow(name="main_flow", retries=5, retry_delay_seconds=10)
-def main(n_trails: int = 100):
+def main(n_trails: int = 5):
     logger = get_run_logger()
+    run_name = f"Retrain_{datetime.now().strftime('%m_%d_%H:%M:%S')}"
     exp_name = os.getenv('MLFLOW_EXPERIMENT_NAME')
     track_uri = os.getenv('MLFLOW_SERVER')
     mlflow.set_tracking_uri(uri=track_uri)
@@ -181,8 +190,8 @@ def main(n_trails: int = 100):
         train, test = fetch_data()
         x_train, y_train = input_output_split(train)
         x_test, y_test = input_output_split(test)
-        run_optmization(x_train, y_train, x_test, y_test, n_trails)
-        register_task(client, exp_name)
+        run_optmization(x_train, y_train, x_test, y_test, run_name, n_trails)
+        register_task(client, exp_name, run_name)
         logger.info("Successfully finish training FLow")
     except Exception as e:
         logger.error("Main Flow faild due to %s", e)

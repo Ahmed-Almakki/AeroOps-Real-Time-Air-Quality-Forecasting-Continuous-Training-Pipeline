@@ -29,8 +29,7 @@ def read_file(file):
 
 def train(x, y, client):
     try:
-        now = datetime.now()
-        with mlflow.start_run(run_name=f"Run_{now.month}_{now.year}"):
+        with mlflow.start_run(run_name=f"Retrain_{datetime.now().strftime('%m_%d_%H:%M:%S')}"):
             model = RandomForestRegressor(n_estimators=5, max_depth=5, min_samples_leaf=1, min_samples_split=2, bootstrap=True)
             model.fit(x, y)
             mlflow.sklearn.log_model(model, "model", registered_model_name=os.getenv("REGISTERD_MODEL"))

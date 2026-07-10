@@ -19,8 +19,8 @@ def read_excel(path):
     df.columns = df.columns.str.lower()
     df = df.dropna()
     df = df.rename(columns={"pm2.5": "real_output"})
-    test = df.head(50)
-    test.to_sql(name=os.getenv("TABLE_NAME"), con=engine, if_exists="append", index=False)
+    # test = df.head(90)
+    df.to_sql(name=os.getenv("TABLE_NAME"), con=engine, if_exists="append", index=False)
 
 
 file = os.path.join("data", file_name)
