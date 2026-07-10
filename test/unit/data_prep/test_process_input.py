@@ -1,28 +1,26 @@
 import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
-from src.data_prep.process_input import process_input
+
+# Note: Make sure to import EXPECTED_FEATURES from your source file
+from src.data_prep.process_input import process_input, EXPECTED_FEATURES
 
 
 def test_process_input_happy_path():
-    """ Everything work perfectly"""
+    """ Everything works perfectly """
     input_data = {
         "payload": {
             "after": {
                 "No": 1,
-                "station": "A1",
-                "temperature": 25.5,
-                "wd": "ENE"
+                "temp": 25.5  # Changed 'temperature' to 'temp'
             }
         }
     }
 
     predicted_output = process_input(input_data)
 
-    expected_data = {
-        "temperature": [25.5],
-        "wd_ENE": [True]
-    }
+    expected_data = {feature: [0] for feature in EXPECTED_FEATURES}
+    expected_data["temp"] = [25.5]
     expected_output = pd.DataFrame(expected_data)
 
     assert_frame_equal(predicted_output, expected_output, check_like=True)
@@ -33,18 +31,17 @@ def test_process_input_missing_drop_columns():
     input_data = {
         "payload": {
             "after": {
-                "temperature": 25.5,
-                "wd": "E"
+                "temp": 25.5,
+                "rain": 1.0
             }
         }
     }
 
     predicted_output = process_input(input_data)
 
-    expected_data = {
-        "temperature": [25.5],
-        "wd_E": [True]
-    }
+    expected_data = {feature: [0] for feature in EXPECTED_FEATURES}
+    expected_data["temp"] = [25.5]
+    expected_data["rain"] = [1.0]
     expected_output = pd.DataFrame(expected_data)
 
     assert_frame_equal(predicted_output, expected_output, check_like=True)
@@ -57,17 +54,19 @@ def test_process_input_missing_wd_column():
             "after": {
                 "No": 2,
                 "station": "B2",
-                "temperature": 30.0
+                "temp": 30.0
             }
         }
     }
 
     predicted_output = process_input(input_data)
 
-
-    expected_output = pd.DataFrame({"temperature": [30.0]})
+    expected_data = {feature: [0] for feature in EXPECTED_FEATURES}
+    expected_data["temp"] = [30.0]
+    expected_output = pd.DataFrame(expected_data)
 
     assert_frame_equal(predicted_output, expected_output, check_like=True)
+
 
 def test_process_input_empty_after_data():
     """ Empty 'after' data """
@@ -78,8 +77,6 @@ def test_process_input_empty_after_data():
     }
 
     predicted_output = process_input(input_data)
-
-
     expected_output = pd.DataFrame()
 
     assert_frame_equal(predicted_output, expected_output)

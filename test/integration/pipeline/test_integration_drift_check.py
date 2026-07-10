@@ -11,6 +11,7 @@ from src.pipeline.drift_check import daily_drift
 def configuration(monkeypatch, postgres_container):
     monkeypatch.setenv("POSTGRES_USER", postgres_container["POSTGRES_USER"])
     monkeypatch.setenv("POSTGRES_PASSWORD", postgres_container["POSTGRES_PASSWORD"])
+    monkeypatch.setenv("POSTGRES_PORT", postgres_container["POSTGRES_PORT"])
     monkeypatch.setenv("POSTGRES_HOST", postgres_container["POSTGRES_HOST"])
     monkeypatch.setenv("POSTGRES_DB", postgres_container["POSTGRES_DB"])
     monkeypatch.setenv("TABLE_NAME", postgres_container["TABLE_NAME"])
@@ -18,12 +19,11 @@ def configuration(monkeypatch, postgres_container):
     monkeypatch.setenv("REPORTS_DIR", "/tmp")
     monkeypatch.setenv("SLACK_WEBHOOK_URL", "N/A")
 
-    host, port = postgres_container["POSTGRES_HOST"].split(":")
     conn = psycopg2.connect(
         user=postgres_container["POSTGRES_USER"],
         password=postgres_container["POSTGRES_PASSWORD"],
-        host=host,
-        port=port,
+        host=postgres_container["POSTGRES_HOST"],
+        port= postgres_container["POSTGRES_PORT"],
         dbname=postgres_container["POSTGRES_DB"]
     )
     return conn
@@ -37,7 +37,6 @@ def postgres_container():
         db = postgres.dbname
         host = postgres.get_container_host_ip()
         port = postgres.get_exposed_port(5432)
-        host_and_port = f"{host}:{port}"
         table_name = "sensor_data_test"
         prediction_table_name = "air_pollution_predictions_test"
 
@@ -84,7 +83,8 @@ def postgres_container():
         yield {
             "POSTGRES_USER": user,
             "POSTGRES_PASSWORD": password,
-            "POSTGRES_HOST": host_and_port,
+            "POSTGRES_HOST": host,
+            "POSTGRES_PORT": str(port),
             "POSTGRES_DB": db,
             "TABLE_NAME": table_name,
             "PREDICTION_TABLE_NAME": prediction_table_name
@@ -102,6 +102,7 @@ def test_daily_drift(postgres_container, monkeypatch, caplog):
     monkeypatch.setenv("POSTGRES_USER", postgres_container["POSTGRES_USER"])
     monkeypatch.setenv("POSTGRES_PASSWORD", postgres_container["POSTGRES_PASSWORD"])
     monkeypatch.setenv("POSTGRES_HOST", postgres_container["POSTGRES_HOST"])
+    monkeypatch.setenv("POSTGRES_PORT", postgres_container["POSTGRES_PORT"])
     monkeypatch.setenv("POSTGRES_DB", postgres_container["POSTGRES_DB"])
     monkeypatch.setenv("TABLE_NAME", postgres_container["TABLE_NAME"])
     monkeypatch.setenv("PREDICTION_TABLE_NAME", postgres_container["PREDICTION_TABLE_NAME"])

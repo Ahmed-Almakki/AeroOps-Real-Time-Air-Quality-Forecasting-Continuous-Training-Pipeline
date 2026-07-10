@@ -1,15 +1,25 @@
 from datetime import datetime
 import pytest
 from unittest.mock import patch
+import time
 import pandas as pd
 import tempfile
 import mlflow
 from mlflow import MlflowClient
+from prefect.testing.utilities import prefect_test_harness
 import os
 from dotenv import load_dotenv
-from src.model_managment.regester_model import register_best_model
+import importlib
+
+import src.model_managment.regester_model as register_module
 
 load_dotenv()
+
+@pytest.fixture(autouse=True)
+def prefct_test_fixture():
+    with prefect_test_harness():
+        yield
+
 
 class DummyModel(mlflow.pyfunc.PythonModel):
     def predict(self, context, model_input):
@@ -22,9 +32,15 @@ class PreviousDummyModel(mlflow.pyfunc.PythonModel):
 
 
 @pytest.fixture(scope="function", autouse=True)
-def isolated_mlflow():
+def isolated_mlflow(monkeypatch):
     with tempfile.TemporaryDirectory() as temp_dir:
-        os.environ["REGISTERD_MODEL"] = "test_model"
+        monkeypatch.setenv("REGISTERD_MODEL", "test_model")
+        importlib.reload(register_module)
+
+        dummy_data = pd.DataFrame({"pm2.5": [10.5, 12.0], "feature1": [1, 2]})
+
+        # 3. Intercept read_csv! Now your code will NEVER read the 143-row real file during tests.
+        monkeypatch.setattr(register_module.pd, "read_csv", lambda _: dummy_data)
         db_path = os.path.join(temp_dir, "mlflow.db")
         mlflow.set_tracking_uri(f"sqlite:///{db_path}")
 
@@ -37,24 +53,17 @@ def isolated_mlflow():
 
         mlflow.set_experiment(experiment_id=experiment_id)
 
-        dummy_data = pd.DataFrame({"PM2.5": [10.5, 12.0], "feature1": [1, 2]})
-        csv_path = "./golden_dataset.csv"
-        dummy_data.to_csv(csv_path, index=False)
-
         yield
-
-        if os.path.exists(csv_path):
-            os.remove(csv_path)
 
 def test_register_best_model():
     client = MlflowClient()
 
-    now = datetime.now()
-    with mlflow.start_run(run_name=f"Run_{now.month}_{now.year}"):
+    run_name = f"Retrain_{datetime.now().strftime('%m_%d_%H:%M:%S')}"
+    with mlflow.start_run(run_name=run_name):
         mlflow.pyfunc.log_model(artifact_path="model", python_model=DummyModel())
         mlflow.log_metric("rmse", 0.5)
 
-    register_best_model(client=client, exp_name="test_experiment")
+    register_module.register_best_model(client=client, exp_name="test_experiment", run_name=run_name)
 
 
     registered_models = client.search_registered_models()
@@ -63,24 +72,25 @@ def test_register_best_model():
 
 
 
-def test_register_best_model_new_better():
+def test_register_best_model_new_better(caplog):
     client = MlflowClient()
+    caplog.set_level("INFO")
 
-    now = datetime.now()
-
-    with mlflow.start_run(run_name=f"Run_{now.month - 1}_{now.year}") as previous_run:
+    with mlflow.start_run(run_name=f"Retrain_{datetime.now().strftime('%m_%d_%H:%M:%S')}") as previous_run:
         previous_run_id = previous_run.info.run_id
         mlflow.pyfunc.log_model(artifact_path="model", python_model=PreviousDummyModel(), registered_model_name=os.getenv("REGISTERD_MODEL"))
+        mlflow.log_metric("rmse", 1.0)
     client.set_registered_model_alias(name=os.getenv("REGISTERD_MODEL"), alias="production", version="1")
 
-
-    with mlflow.start_run(run_name=f"Run_{now.month}_{now.year}") as current_run:
+    time.sleep(20)
+    run_name = f"Retrain_{datetime.now().strftime('%m_%d_%H:%M:%S')}"
+    with mlflow.start_run(run_name=run_name) as current_run:
         current_run_id = current_run.info.run_id
         mlflow.pyfunc.log_model(artifact_path="model", python_model=DummyModel())
         mlflow.log_metric("rmse", 0.5)
-        mlflow.set_tag("mlflow.runName", f"Run_{now.month}_{now.year}")
+        mlflow.set_tag("mlflow.runName", run_name)
 
-    register_best_model(client=client, exp_name="test_experiment")
+    register_module.register_best_model(client=client, exp_name="test_experiment", run_name=run_name)
 
     model_name = os.getenv("REGISTERD_MODEL")
 
@@ -91,27 +101,23 @@ def test_register_best_model_new_better():
     assert archive_version.run_id == previous_run_id, "Old model should be aliased as archive."
 
 
-
-@patch('src.model_managment.regester_model.logging')
-def test_register_best_model_old_better(mock_logging):
+def test_register_best_model_old_better(caplog):
     client = MlflowClient()
+    caplog.set_level("INFO")
 
-    now = datetime.now()
-
-    with mlflow.start_run(run_name=f"Run_{now.month - 1}_{now.year}") as previous_run:
-        previous_run_id = previous_run.info.run_id
+    with mlflow.start_run(run_name=f"Retrain_{datetime.now().strftime('%m_%d_%H:%M:%S')}"):
         mlflow.pyfunc.log_model(artifact_path="model", python_model=DummyModel(), registered_model_name=os.getenv("REGISTERD_MODEL"))
+        mlflow.log_metric("rmse", 0.5)
     client.set_registered_model_alias(name=os.getenv("REGISTERD_MODEL"), alias="production", version="1")
 
-
-    with mlflow.start_run(run_name=f"Run_{now.month}_{now.year}") as current_run:
-        current_run_id = current_run.info.run_id
+    time.sleep(20)
+    run_name = f"Retrain_{datetime.now().strftime('%m_%d_%H:%M:%S')}"
+    with mlflow.start_run(run_name=run_name) as current_run:
         mlflow.pyfunc.log_model(artifact_path="model", python_model=PreviousDummyModel())
-        mlflow.log_metric("rmse", 0.5)
-        mlflow.set_tag("mlflow.runName", f"Run_{now.month}_{now.year}")
+        mlflow.log_metric("rmse", 1.0)
+        mlflow.set_tag("mlflow.runName", run_name)
 
-    register_best_model(client=client, exp_name="test_experiment")
+    register_module.register_best_model(client=client, exp_name="test_experiment", run_name=run_name)
 
-    assert mock_logging.warning.call_count > 0
-    # ensure the specific warning message about old model being better was logged
-    assert any("The old model Still the production model" in str(call.args) for call in mock_logging.warning.call_args_list)
+
+    assert "The old model Still the production model" in caplog.messages
