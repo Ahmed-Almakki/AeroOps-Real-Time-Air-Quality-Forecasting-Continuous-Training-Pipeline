@@ -1,6 +1,8 @@
 import pytest
 from unittest.mock import MagicMock, patch
 from src.pipeline.drift_check import read_data_from_db
+
+
 class Test_readDB:
 
     @patch('src.pipeline.drift_check.get_run_logger')
@@ -8,7 +10,7 @@ class Test_readDB:
     @patch('src.pipeline.drift_check.Session')
     @patch('os.getenv')
     def test_read_from_db(self, mock_getenv, mock_session, mock_engine, mock_get_run_logger):
-        mock_getenv.side_effect = ['ahmed', '123', 'host', 'db', 'table_name', 'prediction_table_name']
+        mock_getenv.side_effect = ['ahmed', '123', 'host', '5432', 'db', 'table_name', 'prediction_table_name']
 
         mock_result = MagicMock() # mock the result of session.execute
 
@@ -27,7 +29,7 @@ class Test_readDB:
         assert len(refrence_data) == 24
         assert list(current_data.columns) == ['id', 'name', 'updated']
 
-        mock_engine.assert_called_once_with('postgresql+psycopg://ahmed:123@host/db')
+        mock_engine.assert_called_once_with('postgresql+psycopg://ahmed:123@host:5432/db')
 
         mock_logger = mock_get_run_logger.return_value
         mock_logger.info.assert_any_call("Data fetched successfully from the database.")
@@ -37,7 +39,7 @@ class Test_readDB:
     @patch('src.pipeline.drift_check.Session')
     @patch('os.getenv')
     def test_read_from_db_insufficient_data(self, mock_getenv, mock_session, mock_engine, mock_get_run_logger):
-        mock_getenv.side_effect = ['ahmed', '123', 'host', 'db', 'table_name', 'prediction_table_name']
+        mock_getenv.side_effect = ['ahmed', '123', 'host', '5432', 'db', 'table_name', 'prediction_table_name']
 
         mock_result = MagicMock()
 
@@ -60,7 +62,7 @@ class Test_readDB:
     @patch('src.pipeline.drift_check.Session')
     @patch('os.getenv')
     def test_read_from_db_missing_column(self, mock_getenv, mock_session, mock_engine, mock_get_run_logger):
-        mock_getenv.side_effect = ['ahmed', '123', 'host', 'db', 'table_name', 'prediction_table_name']
+        mock_getenv.side_effect = ['ahmed', '123', 'host', '5432', 'db', 'table_name', 'prediction_table_name']
 
         mock_result = MagicMock()
 

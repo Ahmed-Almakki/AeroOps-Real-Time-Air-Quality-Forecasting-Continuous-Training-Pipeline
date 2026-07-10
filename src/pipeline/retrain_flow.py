@@ -30,7 +30,7 @@ def fetch_data() -> tuple[pd.DataFrame, pd.DataFrame]:
 
     try:
         engine = create_engine(
-            f"postgresql+psycopg://{os.getenv('POSTGRES_USER')}:{os.getenv('POSTGRES_PASSWORD')}@{os.getenv('POSTGRES_HOST')}/{os.getenv('POSTGRES_DB')}"
+            f"postgresql+psycopg://{os.getenv('POSTGRES_USER')}:{os.getenv('POSTGRES_PASSWORD')}@{os.getenv('POSTGRES_HOST')}:{os.getenv("POSTGRES_PORT")}/{os.getenv('POSTGRES_DB')}"
         )
 
         with Session(engine) as session:

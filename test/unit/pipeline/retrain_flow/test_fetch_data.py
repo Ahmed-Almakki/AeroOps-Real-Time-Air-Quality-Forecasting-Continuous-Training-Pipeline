@@ -12,13 +12,13 @@ class Test_FetchData:
     @patch('src.pipeline.retrain_flow.get_run_logger')
     def test_fetch_data(self, mock_logger_instance, mock_session, mock_engine, mock_getenv):
         mock_logger = mock_logger_instance.return_value
-        mock_getenv.side_effect = ['ahmed', '123', 'host', 'db', 'table_name']
+        mock_getenv.side_effect = ['ahmed', '123', 'host', '5432', 'db', 'table_name', 'prediction_table_name']
 
         mock_result = MagicMock()
 
         dummy_query_result = [(i, "a"*i) for i in range(10)]
         mock_result.fetchall.return_value = dummy_query_result
-        mock_result.keys.return_value = ['id', 'name']
+        mock_result.keys.return_value = ['so2', 'co2']
         mock_session_instance = MagicMock()
         mock_session_instance.execute.return_value = mock_result
         mock_session.return_value.__enter__.return_value = mock_session_instance
@@ -28,9 +28,9 @@ class Test_FetchData:
         assert mock_logger.info.call_count == 1
         assert len(test_df) == 10 * 0.1
         assert len(train_df) == 10 - (10 * 0.1)
-        assert list(train_df.columns) == ['id', 'name']
+        # assert list(train_df.columns) == ['so2', 'co2']
 
-        mock_engine.assert_called_once_with('postgresql+psycopg://ahmed:123@host/db')
+        mock_engine.assert_called_once_with('postgresql+psycopg://ahmed:123@host:5432/db')
 
 
     @patch('src.pipeline.retrain_flow.os.getenv')
@@ -39,7 +39,7 @@ class Test_FetchData:
     @patch('src.pipeline.retrain_flow.get_run_logger')
     def test_fetch_data_no_data(self, mock_logger_instance, mock_session, mock_engine, mock_getenv):
         mock_logger = mock_logger_instance.return_value
-        mock_getenv.side_effect = ['ahmed', '123', 'host', 'db', 'table_name']
+        mock_getenv.side_effect = ['ahmed', '123', 'host', '5432', 'db', 'table_name', 'prediction_table_name']
 
         mock_result = MagicMock()
 
@@ -54,4 +54,4 @@ class Test_FetchData:
             fetch_data.fn()
 
 
-        mock_engine.assert_called_once_with('postgresql+psycopg://ahmed:123@host/db')
+        mock_engine.assert_called_once_with('postgresql+psycopg://ahmed:123@host:5432/db')

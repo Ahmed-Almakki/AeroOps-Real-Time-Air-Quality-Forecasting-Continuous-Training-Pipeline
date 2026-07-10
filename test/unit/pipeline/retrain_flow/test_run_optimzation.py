@@ -22,6 +22,7 @@ class Test_RunOptmization:
             Y_train=dummy_y,
             X_test=dummy_x,
             Y_test=dummy_y,
+            unique_run_name="dummy_name",
             num_trials=10
         )
 
@@ -49,5 +50,6 @@ class Test_RunOptmization:
                 X_train=empty_df,
                 Y_train=valid_df,
                 X_test=valid_df,
-                Y_test=valid_df
+                Y_test=valid_df,
+                unique_run_name="dummy_name",
             )
