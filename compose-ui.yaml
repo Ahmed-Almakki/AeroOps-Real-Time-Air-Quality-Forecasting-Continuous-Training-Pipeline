@@ -1,0 +1,21 @@
+services:
+  ui:
+    image: ui:0.0.3
+
+    ports:
+      - "8501:8501"
+
+    depends_on:
+        db:
+          condition: service_healthy
+
+    networks:
+      - default
+      - prefect_network
+
+    healthcheck:
+        test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8501/_stcore/health')"]
+        interval: 10s
+        timeout: 5s
+        retries: 5
+        start_period: 60s
