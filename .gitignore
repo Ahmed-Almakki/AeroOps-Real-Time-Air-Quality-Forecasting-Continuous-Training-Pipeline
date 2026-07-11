@@ -215,7 +215,7 @@ marimo/_lsp/
 __marimo__/
 
 # Streamlit
-.streamlit/secrets.toml
+**/.streamlit/secrets.toml
 
 archive/
 DB_data/
