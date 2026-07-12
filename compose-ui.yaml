@@ -1,9 +1,12 @@
 services:
   ui:
-    image: ui:0.0.3
+    image: ui:0.0.5
 
     ports:
       - "8501:8501"
+    restart: always
+    env_file:
+      - .env
 
     depends_on:
         db:
