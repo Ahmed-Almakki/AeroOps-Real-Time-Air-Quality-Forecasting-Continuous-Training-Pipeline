@@ -8,3 +8,4 @@ include:
   - compose-prefect.yaml
   - compose-inference.yaml
   - compose-ui.yaml
+  - infra/monitoring/compose-grafana.yaml
