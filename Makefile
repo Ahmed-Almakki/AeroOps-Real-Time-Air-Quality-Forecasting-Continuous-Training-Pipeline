@@ -17,3 +17,6 @@ logs_mlflow:
 	docker logs air_quality_system-main_flow-1
 
 run: start init_model sensor_reads
+
+temp_delete:
+	sudo rm -rf reports/*

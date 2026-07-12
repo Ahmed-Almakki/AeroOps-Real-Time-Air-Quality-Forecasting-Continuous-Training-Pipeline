@@ -7,3 +7,5 @@ include:
   - compose-experiment-tracking.yaml
   - compose-prefect.yaml
   - compose-inference.yaml
+  - compose-ui.yaml
+  - infra/monitoring/compose-grafana.yaml
