@@ -17,14 +17,14 @@ echo "Waiting for Kafka Connect REST API to come online..."
 # Loop until a GET request to /connectors returns an HTTP 200 status
 while : ; do
   HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$KAFKA_CONNECT_URL")
-
+  
   if [ "$HTTP_STATUS" -eq 200 ]; then
     echo -e "\nREST API is up! Giving the worker 15 seconds to sync with the Kafka cluster..."
     # This buffer allows the worker to finish group coordination
-    sleep 15
+    sleep 15 
     break
   fi
-
+  
   echo -n "."
   sleep 5
 done
@@ -35,7 +35,7 @@ echo -e "\nDeploying Kafka Connect with Debezium PostgreSQL Connector..."
 while : ; do
   # Execute curl, capturing the response body and appending the HTTP status code on a new line
   RESPONSE=$(curl -s -w "\n%{http_code}" -X POST -H "Content-Type: application/json" --data @"$SCRIPT_DIR/postgres_source.json" "$KAFKA_CONNECT_URL")
-
+  
   # Extract the HTTP status code (last line) and the response body (everything else)
   HTTP_STATUS=$(echo "$RESPONSE" | tail -n1)
   BODY=$(echo "$RESPONSE" | sed '$d')
