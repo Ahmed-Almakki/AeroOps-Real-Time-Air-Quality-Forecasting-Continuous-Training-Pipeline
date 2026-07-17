@@ -6,14 +6,14 @@ services:
       - "9092:9092"
     networks:
       - prefect_network
-      -  default
+      - default
     healthcheck:
       test: ["CMD-SHELL", "bash -c '</dev/tcp/localhost/9092'"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 60s
-      
+
     environment:
       KAFKA_KRAFT_MODE: "true" # manage its own meadata and cluster coordination, instead of using Zookeeper
 
@@ -48,8 +48,8 @@ services:
       # 2. Required for internal transaction state in a 1-node setup
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      
-      # 3. This stops Kafka from unnecessarily waiting for more workers to join, 
+
+      # 3. This stops Kafka from unnecessarily waiting for more workers to join,
       # which prevents Kafka Connect from deadlocking during startup.
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
 
