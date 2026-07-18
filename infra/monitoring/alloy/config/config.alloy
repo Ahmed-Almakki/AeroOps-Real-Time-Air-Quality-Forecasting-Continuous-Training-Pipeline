@@ -1,0 +1,42 @@
+// ================ LOGS =======================
+
+loki.write "loki_destination" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}
+
+// Discover all running Docker containers
+discovery.docker "local_containers" {
+  host = "unix:///var/run/docker.sock"
+}
+
+// Relabel the logs to be easy to read inside Loki
+discovery.relabel "container_labels" {
+  targets = discovery.docker.local_containers.targets
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "container"
+  }
+}
+
+// Scrape the logs from the discovered containers and send them to Loki
+loki.source.docker "container_logs" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.container_labels.output
+  forward_to = [loki.write.loki_destination.receiver]
+}
+
+
+// ================= METRICS ==================
+
+prometheus.remote_write "prometheus_db" {
+  endpoint { url = "http://prometheus:9090/api/v1/write" }
+}
+
+prometheus.scrape "container_metrics" {
+  targets    = discovery.docker.containers.targets
+  forward_to = [prometheus.remote_write.prometheus_db.receiver]
+}
