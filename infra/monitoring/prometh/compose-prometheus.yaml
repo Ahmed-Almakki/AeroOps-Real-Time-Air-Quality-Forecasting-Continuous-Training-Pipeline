@@ -1,0 +1,17 @@
+services:
+  promethues:
+    image: prom/prometheus:latest
+
+    command:
+      - --web.enable-remote-write-receiver
+      - --config.file=/etc/prometheus/prometheus.yml
+
+    ports:
+      - "9090:9090"
+
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+
+    networks:
+        - prefect_network
+        - default
