@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
+import sys
 from src.input_data.kafka_input import KafkaInput
 
 from ..data_prep.process_input import process_input
@@ -14,7 +15,7 @@ load_dotenv()
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
-    colorize=True,
+    handlers=[logging.StreamHandler(sys.stdout)]
 )
 
 

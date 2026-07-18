@@ -1,10 +1,11 @@
 import logging
-
+import sys
 import pandas as pd
 
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[logging.StreamHandler(sys.stdout)]
 )
 
 EXPECTED_FEATURES = [

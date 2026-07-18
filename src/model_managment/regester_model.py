@@ -6,9 +6,10 @@ import pandas as pd
 from dotenv import load_dotenv
 from mlflow.entities import ViewType
 from sklearn.metrics import root_mean_squared_error
+import sys
 
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', handlers=[logging.StreamHandler(sys.stdout)])
 load_dotenv()
 
 @task(name="register_best_model", retries=3, retry_delay_seconds=10)
