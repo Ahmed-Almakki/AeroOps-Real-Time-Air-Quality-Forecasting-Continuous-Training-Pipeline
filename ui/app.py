@@ -2,13 +2,13 @@
 import streamlit as st
 import pandas as pd
 import altair as alt
-import numpy as np
 import os
 from dotenv import load_dotenv
 import logging
+import sys
 
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', handlers=[logging.StreamHandler(sys.stdout)])
 
 
 def load_data(target_date, mode):

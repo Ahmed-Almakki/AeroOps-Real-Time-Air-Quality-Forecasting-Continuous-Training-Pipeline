@@ -1,11 +1,11 @@
-import os
+import sys
 import json
 import logging
 
 from dotenv import load_dotenv
 from confluent_kafka import Consumer, KafkaError, KafkaException
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', handlers=[logging.StreamHandler(sys.stdout)])
 load_dotenv()
 
 
