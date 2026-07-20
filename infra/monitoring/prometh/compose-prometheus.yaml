@@ -1,17 +1,32 @@
 services:
-  promethues:
+  prometheus:
     image: prom/prometheus:latest
+    container_name: prometheus
+
+    restart: unless-stopped
 
     command:
-      - --web.enable-remote-write-receiver
-      - --config.file=/etc/prometheus/prometheus.yml
+      - '--web.enable-remote-write-receiver'
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus' # It's best practice to explicitly state where data is stored
 
     ports:
       - "9090:9090"
 
     volumes:
       - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus # saves your metrics so they survive container restarts
 
     networks:
-        - prefect_network
-        - default
+      - prefect_network
+      - default
+
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -q --tries=1 -O- http://localhost:9090/-/ready || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  prometheus_data:

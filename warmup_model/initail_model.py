@@ -19,6 +19,7 @@ def read_file(file):
         print("df columns %s", df.columns)
         df['real_output'] = df["real_output"].shift(-1)
         df = df.dropna()
+        df = df.head(5)
         if "wd" in df.columns:
             df = pd.get_dummies(df, columns=['wd'])
         y = df.pop('real_output')

@@ -11,7 +11,6 @@ discovery.docker "local_containers" {
   host = "unix:///var/run/docker.sock"
 }
 
-// Relabel the logs to be easy to read inside Loki
 discovery.relabel "container_labels" {
   targets = discovery.docker.local_containers.targets
 
@@ -36,7 +35,42 @@ prometheus.remote_write "prometheus_db" {
   endpoint { url = "http://prometheus:9090/api/v1/write" }
 }
 
-prometheus.scrape "container_metrics" {
-  targets    = discovery.docker.containers.targets
+prometheus.exporter.cadvisor "container_resources" {
+  docker_host = "unix:///var/run/docker.sock"
+}
+
+prometheus.scrape "scrape_resources" {
+  targets    = prometheus.exporter.cadvisor.container_resources.targets
   forward_to = [prometheus.remote_write.prometheus_db.receiver]
+  scrape_interval = "10s"
+}
+
+// Postgres
+prometheus.exporter.postgres "postgres_exporter" {
+  data_source_names = [
+    format("postgresql://%s:%s@db:5432/%s?sslmode=disable", sys.env("DB_USER"), sys.env("DB_PASSWORD"), sys.env("DB_NAME")),
+  ]
+}
+
+prometheus.scrape "postgres_scrape" {
+  targets    = prometheus.exporter.postgres.postgres_exporter.targets
+  forward_to = [prometheus.remote_write.prometheus_db.receiver]
+  scrape_interval = "10s"
+}
+
+// Kafka
+prometheus.exporter.kafka "kafka_exporter" {
+  kafka_uris = ["kafka:9092"]
+}
+
+prometheus.scrape "kafka_scrape" {
+  targets    = prometheus.exporter.kafka.kafka_exporter.targets
+  forward_to = [prometheus.remote_write.prometheus_db.receiver]
+  scrape_interval = "10s"
+}
+
+prometheus.scrape "container_metrics" {
+  targets    = discovery.relabel.container_labels.output
+  forward_to = [prometheus.remote_write.prometheus_db.receiver]
+  scrape_interval = "10s"
 }

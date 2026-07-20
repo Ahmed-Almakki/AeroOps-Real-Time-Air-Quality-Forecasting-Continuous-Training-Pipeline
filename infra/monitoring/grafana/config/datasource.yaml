@@ -13,3 +13,23 @@ datasources:
       sslmode: disable
       database: postgres
       postgresVersion: 1700
+
+  - name: Loki
+    orgId: 1
+    type: loki
+    access: proxy
+    url: 'http://loki:3100'
+    basicAuth: false
+    version: 1
+    editable: true
+
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    jsonData:
+      httpMethod: POST
+      manageAlerts: true # allows you to create and manage alerts directly inside the Grafana UI.
+      # allowAsRecordingRulesTarget: true
+      # disableRecordingRules: false
+      timeInterval: 10s
