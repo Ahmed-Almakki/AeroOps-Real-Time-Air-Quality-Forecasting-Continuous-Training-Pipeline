@@ -1,6 +1,6 @@
 services:
   main_flow:
-    image: main_flow:0.0.4
+    image: main_flow:0.0.5
     restart: always
     env_file:
       - .env

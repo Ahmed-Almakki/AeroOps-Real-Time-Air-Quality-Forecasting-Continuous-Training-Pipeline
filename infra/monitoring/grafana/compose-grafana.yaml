@@ -22,7 +22,6 @@ services:
           GF_DATABASE_USER: ${POSTGRES_USER}
           GF_DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
 
-
       volumes:
           - grafana_data:/var/lib/grafana
           - ./config/datasource.yaml:/etc/grafana/provisioning/datasources/datasource.yml

@@ -9,3 +9,6 @@ include:
   - compose-inference.yaml
   - compose-ui.yaml
   - infra/monitoring/grafana/compose-grafana.yaml
+  - infra/monitoring/alloy/compose-alloy.yaml
+  - infra/monitoring/loki/compose-loki.yaml
+  - infra/monitoring/prometh/compose-prometheus.yaml
