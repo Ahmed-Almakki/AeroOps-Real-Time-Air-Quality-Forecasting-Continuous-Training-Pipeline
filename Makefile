@@ -32,7 +32,7 @@ hourly_reads:
 # testing
 
 test_unit:
-	pytest tests/unit/
+	pytest test/unit/
 
 test_integration:
-	pytest tests/integration/
+	pytest test/integration/
