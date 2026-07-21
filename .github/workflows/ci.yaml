@@ -57,6 +57,9 @@ jobs:
       - name: Run Unit Tests
         run: make test_unit
 
+      - name: Build Custom Docker Images
+        run: make build_images
+
       - name: Start core Services
         run: make start_core
 
