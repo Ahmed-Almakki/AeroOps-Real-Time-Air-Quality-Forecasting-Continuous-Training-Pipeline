@@ -1,3 +1,5 @@
+run: start init_model sensor_reads
+
 start:
 	docker compose up -d --wait
 
@@ -13,10 +15,8 @@ sensor_reads:
 hourly_reads:
 	python -m simulator.hourly
 
-logs_mlflow:
-	docker logs air_quality_system-main_flow-1
+unit_test:
+	pytest tests/unit/
 
-run: start init_model sensor_reads
-
-temp_delete:
-	sudo rm -rf reports/*
+integration_test:
+	pytest test/integration
