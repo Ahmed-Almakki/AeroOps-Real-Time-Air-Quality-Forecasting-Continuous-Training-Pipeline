@@ -10,6 +10,9 @@ services:
 
   loki:
     image: grafana/loki:latest
+
+    profiles: ["monitoring"]
+
     container_name: loki
 
     restart: unless-stopped

@@ -1,6 +1,9 @@
 services:
   prometheus:
     image: prom/prometheus:latest
+
+    profiles: ["monitoring"]
+
     container_name: prometheus
 
     restart: unless-stopped

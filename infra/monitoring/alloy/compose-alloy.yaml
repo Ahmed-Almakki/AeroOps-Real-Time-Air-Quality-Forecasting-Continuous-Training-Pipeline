@@ -2,6 +2,8 @@ services:
   alloy:
     image: grafana/alloy:latest
 
+    profiles: ["monitoring"]
+
     privileged: true # to read host hardware status
 
     ports:
