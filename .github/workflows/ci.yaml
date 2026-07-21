@@ -1,0 +1,38 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches:
+      - dev
+      - main
+
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test-pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install requirements
+        run: pip install -r requirments.txt pytest
+
+      - name: Run Unit Tests
+        run: make test_unit
+
+      - name: Start core Services
+        run: make start_core
+
+      - name: Run Integration Tests
+        run: make test_integration
+
+      - name: Stop Services
+        run: make teardown
