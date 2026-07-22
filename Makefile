@@ -14,6 +14,8 @@ build_images:
 	docker build -f Dockerfile.db -t pg:0.0.8 .
 	docker build -f Dockerfile.flow -t main_flow:0.0.5 .
 	docker build -f Dockerfile.kafka -t kafka_connect:0.0.1 .
+	docker pull confluentinc/cp-kafka:7.6.0
+	docker pull testcontainers/ryuk:0.8.1
 # 	docker build -f Dockerfile.ui -t ui:0.0.5 .
 
 
