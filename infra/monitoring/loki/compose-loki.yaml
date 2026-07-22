@@ -3,6 +3,7 @@ services:
   # problem of loki need permission to chumks
   loki-setup:
     image: alpine
+    profiles: ["monitoring"]
     container_name: loki-setup
     volumes:
       - chunks:/loki/chunks
@@ -10,6 +11,9 @@ services:
 
   loki:
     image: grafana/loki:latest
+
+    profiles: ["monitoring"]
+
     container_name: loki
 
     restart: unless-stopped

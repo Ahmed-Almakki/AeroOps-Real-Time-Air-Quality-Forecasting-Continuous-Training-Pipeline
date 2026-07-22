@@ -1,0 +1,73 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches:
+      - dev
+      - main
+
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test-pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install requirements
+        run: pip install -r requirments.txt pytest testcontainers psycopg2 "fastapi<0.137.0"
+
+      - name: Create dummy .env file for CI
+        run: |
+          # DB
+          echo 'POSTGRES_USER="postgres"' >> .env
+          echo 'POSTGRES_PASSWORD="dummy_ci_password"' >> .env
+          echo 'POSTGRES_DB="postgres"' >> .env
+          echo 'POSTGRES_HOST="db"' >> .env
+          echo 'POSTGRES_PORT="5432"' >> .env
+          echo 'TABLE_NAME="air_pollution"' >> .env
+          echo 'PREDICTION_TABLE_NAME="air_pollution_predictions"' >> .env
+
+          # MLflow
+          echo 'MLFLOW_SERVER="http://mlflow_air:5000"' >> .env
+          echo 'MLFLOW_EXPERIMENT_NAME="Air Pollution Prediction Hyperopt Experiment"' >> .env
+          echo 'REGISTERD_MODEL="Best Air Pollution Prediction Model"' >> .env
+
+          # Kafka
+          echo 'KAFKA_TOPIC="pg.public.air_pollution"' >> .env
+          echo 'KAFKA_BOOTSTRAP_SERVERS="localhost:9092"' >> .env
+          echo 'kafka_bootstrap_servers="kafka:29092"' >> .env
+          echo 'KAFKA_CONNECT_URL="http://localhost:8083/connectors"' >> .env
+
+          # Prefect
+          echo 'PREFECT_API_URL="http://prefect-server:4200/api"' >> .env
+          echo 'REPORTS_DIR="/opt/prefect/reports"' >> .env
+
+          # FIX: Disable telemetry to prevent "database is locked" errors in CI
+          echo 'PREFECT_SERVER_ANALYTICS_ENABLED="false"' >> .env
+
+          # Slack (Fake URL to pass GitGuardian security scans)
+          echo 'SLACK_WEBHOOK_URL="https://hooks.slack.com/services/DUMMY/WEBHOOK/FOR_CI_TESTS"' >> .env
+
+      - name: Run Unit Tests
+        run: make test_unit
+
+      - name: Build Custom Docker Images
+        run: make build_images
+
+      - name: Start core Services
+        run: make start_core
+
+      - name: Run Integration Tests
+        run: make test_integration
+
+      - name: Stop Services
+        run: make teardown

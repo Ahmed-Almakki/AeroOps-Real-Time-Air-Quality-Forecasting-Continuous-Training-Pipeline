@@ -2,6 +2,8 @@ services:
   ui:
     image: ui:0.0.5
 
+    profiles: ["monitoring"]
+
     ports:
       - "8501:8501"
     restart: always
