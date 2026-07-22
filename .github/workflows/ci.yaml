@@ -23,7 +23,7 @@ jobs:
           python-version: '3.13'
 
       - name: Install requirements
-        run: pip install -r requirments.txt pytest testcontainers psycopg2
+        run: pip install -r requirments.txt pytest testcontainers psycopg2 "fastapi<0.137.0"
 
       - name: Create dummy .env file for CI
         run: |
@@ -50,6 +50,9 @@ jobs:
           # Prefect
           echo 'PREFECT_API_URL="http://prefect-server:4200/api"' >> .env
           echo 'REPORTS_DIR="/opt/prefect/reports"' >> .env
+
+          # FIX: Disable telemetry to prevent "database is locked" errors in CI
+          echo 'PREFECT_SERVER_ANALYTICS_ENABLED="false"' >> .env
 
           # Slack (Fake URL to pass GitGuardian security scans)
           echo 'SLACK_WEBHOOK_URL="https://hooks.slack.com/services/DUMMY/WEBHOOK/FOR_CI_TESTS"' >> .env
