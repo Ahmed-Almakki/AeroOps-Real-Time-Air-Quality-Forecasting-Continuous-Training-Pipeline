@@ -23,7 +23,7 @@ jobs:
           python-version: '3.13'
 
       - name: Install requirements
-        run: pip install -r requirments.txt pytest testcontainers
+        run: pip install -r requirments.txt pytest testcontainers psycopg2
 
       - name: Create dummy .env file for CI
         run: |
