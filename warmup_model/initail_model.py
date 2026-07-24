@@ -40,7 +40,9 @@ def train(x, y, client):
 
 
 def main():
-    mlflow.set_tracking_uri("http://localhost:8082")
+    os.environ["MLFLOW_TRACKING_USERNAME"] = os.getenv("NGINX_USER")
+    os.environ["MLFLOW_TRACKING_PASSWORD"] = os.getenv("NGINX_PASSWORD")
+    mlflow.set_tracking_uri(f"http://localhost/mlflow/")
     mlflow.set_experiment(os.getenv("MLFLOW_EXPERIMENT_NAME"))
     client = MlflowClient()
     try:

@@ -2,13 +2,14 @@ services:
   prefect_server:
     image: prefecthq/prefect:3-latest
     environment:
-    # http://prefect-server:4200/api instead of localhost becasue localhost will refer to inside th docker container not the host machine
+      # Internal Python client uses this to talk to itself safely inside the container
       - PREFECT_API_URL=http://127.0.0.1:4200/api
-      # 0.0.0.0 to allow access from outside the container
+      - PREFECT_UI_API_URL=/api
       - PREFECT_API_DATABASE_CONNECTION_URL=postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/prefect_db
+      # 0.0.0.0 to allow access from outside the container
     command: prefect server start --host 0.0.0.0
-    ports:
-      - "4200:4200"
+    # ports:
+    #   - "4200:4200"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4200/api/health')"]
       interval: 10s
@@ -22,7 +23,7 @@ services:
         condition: service_healthy
 
   prefect-pool:
-    image: prefect-pollution:0.0.8
+    image: prefect-pollution:0.0.2
     env_file:
      - .env
     environment:
@@ -47,7 +48,7 @@ services:
 
 
   prefect-worker:
-    image: prefect-pollution:0.0.8
+    image: prefect-pollution:0.0.2
     env_file:
      - .env
     environment:

@@ -26,8 +26,8 @@ class Test_DataReport:
 
         dummy_ref = pd.DataFrame({'temp': [20]})
         dummy_cur = pd.DataFrame({'temp': [25]})
-
-        result = data_report.fn(dummy_cur, dummy_ref)
+        time = pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')
+        result = data_report.fn(dummy_cur, dummy_ref, time)
 
         mock_data_def_class.assert_called_once()
 

@@ -28,8 +28,9 @@ class Test_ModelPerformance:
 
         dummy_ref = pd.DataFrame({'temp': [20]})
         dummy_cur = pd.DataFrame({'temp': [25]})
+        time = pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')
 
-        result = model_performance_report.fn(current_data=dummy_cur, refrence_data=dummy_ref)
+        result = model_performance_report.fn(current_data=dummy_cur, refrence_data=dummy_ref, timestamp=time)
 
         mock_data_def_class.assert_called_once_with(
             numerical_columns=ANY,

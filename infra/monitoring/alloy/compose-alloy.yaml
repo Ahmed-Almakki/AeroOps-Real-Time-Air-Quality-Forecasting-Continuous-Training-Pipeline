@@ -6,8 +6,8 @@ services:
 
     privileged: true # to read host hardware status
 
-    ports:
-      - "12345:12345"
+    # ports:
+    #   - "12345:12345"
 
     environment:
       - DB_USER=${POSTGRES_USER}

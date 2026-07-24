@@ -13,8 +13,8 @@ services:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus' # It's best practice to explicitly state where data is stored
 
-    ports:
-      - "9090:9090"
+    # ports:
+    #   - "9090:9090"
 
     volumes:
       - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
