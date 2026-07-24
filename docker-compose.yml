@@ -8,6 +8,7 @@ include:
   - compose-prefect.yaml
   - compose-inference.yaml
   - compose-ui.yaml
+  - compose-nginx.yaml
   - infra/monitoring/grafana/compose-grafana.yaml
   - infra/monitoring/alloy/compose-alloy.yaml
   - infra/monitoring/loki/compose-loki.yaml

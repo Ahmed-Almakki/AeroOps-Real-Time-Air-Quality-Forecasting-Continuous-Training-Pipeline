@@ -82,7 +82,7 @@ def read_data_from_db() -> tuple[pd.DataFrame, pd.DataFrame]:
 
 
 @task(name="data_report", retries=3, retry_delay_seconds=10)
-def data_report(current_data: pd.DataFrame, reference_data: pd.DataFrame) -> dict:
+def data_report(current_data: pd.DataFrame, reference_data: pd.DataFrame, timestamp: pd.Timestamp) -> dict:
     try:
         logger = get_run_logger()
         logger.info("Checking for drift in data...")
@@ -99,7 +99,7 @@ def data_report(current_data: pd.DataFrame, reference_data: pd.DataFrame) -> dic
 
         my_eval = report.run(reference_data=reference_eval, current_data=current_eval)
         my_eval.save_html(
-            f"{os.getenv('REPORTS_DIR')}/drift_report_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.html"
+            f"{os.getenv('REPORTS_DIR')}/drift_report_{timestamp}.html"
         )
         logger.info("Drift check completed successfully.")
 
@@ -150,7 +150,7 @@ def check_for_drift(drift_report: dict) -> bool:
 
 
 @task(name="model_performance_report", retries=3, retry_delay_seconds=10)
-def model_performance_report(current_data: pd.DataFrame, refrence_data: pd.DataFrame) -> dict:
+def model_performance_report(current_data: pd.DataFrame, refrence_data: pd.DataFrame, timestamp: pd.Timestamp) -> dict:
     try:
         logger = get_run_logger()
         logger.info("Checking model performance...")
@@ -178,7 +178,7 @@ def model_performance_report(current_data: pd.DataFrame, refrence_data: pd.DataF
         model_performance_eval = report.run(current_data=cur_data, reference_data=ref_data)
 
         model_performance_eval.save_html(
-            f"{os.getenv('REPORTS_DIR')}/model_performance_check_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.html"
+            f"{os.getenv('REPORTS_DIR')}/model_performance_check_{timestamp}.html"
         )
         logger.info("Model performance check completed successfully.")
 
@@ -217,29 +217,50 @@ def daily_drift():
     logger = get_run_logger()
     msg = ""
     trigger_training = False
+    timestamp = pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')
+    base_url = os.getenv("NGINX_HOST")
     current_data, refrence_data = read_data_from_db()
 
-    data_drift = data_report(current_data, refrence_data)
+    data_drift = data_report(current_data, refrence_data, timestamp)
     is_drift = check_for_drift(data_drift)
 
     model_performance = model_performance_report(
-        current_data=current_data, refrence_data=refrence_data
+        current_data=current_data, refrence_data=refrence_data, timestamp=timestamp
     )
     is_degraded = model_performance_check(model_performance)
 
     if is_drift and not is_degraded:
         logger.warning("Data Drifted but model still performing good")
-        msg = "A Data Drift is Suspected"
+        msg = f"""
+            ⚠️ *Warning:Data drift suspected*\n
+            but model performance is still within acceptable limits. No immediate action required.
+            🔗 *Please review the generated reports below:*\n
+            f"• <{base_url}/reports/drift_report_{timestamp}.html|📊 View Data Drift Report>\n"
+            f"• <{base_url}/reports/model_performance_check_{timestamp}.html|📉 View Model Performance Report>"
+        """
 
     elif is_degraded and not is_drift:
-        msg = "Model performance degergation is suspected"
+        msg = f"""
+            🚨 *Alert: Model performance degradation detected without significant data drift*\n" \
+            Automated retraining flow has been triggered\n
+            🔗 *Please review the generated reports below:*\n
+            f"• <{base_url}/reports/drift_report_{timestamp}.html|📊 View Data Drift Report>\n"
+            f"• <{base_url}/reports/model_performance_check_{timestamp}.html|📉 View Model Performance Report>"
+        """
         trigger_training = True
         logger.error("Model degrading while data isn't drifting")
         logger.warning("Triggering Training FLow")
 
     elif is_drift and is_degraded:
         logger.warning("Check Sensors reads...")
-        msg = "Both data drift and model degregation is suspected"
+        msg = f"""
+            🔥 *CRITICAL ALERT: System Degradation*\n
+            Both data drift and a drop in model performance have been detected.
+            This combination strongly suggests potential sensor anomalies or corrupt data.\n\n
+            🔗 *Please review the generated reports below:*\n
+            f"• <{base_url}/reports/drift_report_{timestamp}.html|📊 View Data Drift Report>\n"
+            f"• <{base_url}/reports/model_performance_check_{timestamp}.html|📉 View Model Performance Report>"
+        """
 
     else:
         logger.info("ALl good")
@@ -256,4 +277,4 @@ def daily_drift():
 if __name__ == "__main__":
     daily_drift.from_source(
         source="/opt/prefect/app", entrypoint="src/pipeline/drift_check.py:daily_drift"
-    ).deploy(name="automated-drift-check", work_pool_name="my-process-pool", cron="*/1 * * * *")
+    ).deploy(name="automated-drift-check", work_pool_name="my-process-pool", cron="*/3 * * * *")

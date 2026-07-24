@@ -9,8 +9,12 @@ start_full:
 teardown:
 	docker compose down -v
 
+teardown_profile:
+	docker compose --profile monitoring down -v
+
+
 build_images:
-	docker build -f Dockerfile -t prefect-pollution:0.0.8 .
+	docker build -f Dockerfile -t prefect-pollution:0.0.2 .
 	docker build -f Dockerfile.db -t pg:0.0.8 .
 	docker build -f Dockerfile.flow -t main_flow:0.0.5 .
 	docker build -f Dockerfile.kafka -t kafka_connect:0.0.1 .
