@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import altair as alt
@@ -7,9 +6,7 @@ from dotenv import load_dotenv
 import logging
 import sys
 
-
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', handlers=[logging.StreamHandler(sys.stdout)])
-
 
 def load_data(target_date, mode):
     try:
@@ -26,22 +23,29 @@ def load_data(target_date, mode):
             params = {"sql_date": target_date.strftime("%Y-%m-%d")}
 
         else:
+            # FIX 1: Let the database group and average the daily data to save memory
             query = f"""
-                SELECT s.real_output as real, s.reading_time, p.prediction as pred
+                SELECT DATE(s.reading_time) as reading_time,
+                       AVG(s.real_output) as real,
+                       AVG(p.prediction) as pred
                 FROM {os.getenv("TABLE_NAME")} as s
                 JOIN {os.getenv("PREDICTION_TABLE_NAME")} as p
                 ON s.reading_time = p.reading_time
                 WHERE EXTRACT(MONTH FROM s.reading_time) = :sql_month
                 AND EXTRACT(YEAR FROM s.reading_time) = :sql_year
+                GROUP BY DATE(s.reading_time)
             """
             params = {"sql_month": target_date.month, "sql_year": target_date.year}
 
+        # FIX 3: Initialize the dataframe before the try/except block to prevent UnboundLocalError
+        df = pd.DataFrame()
         try:
             logging.info("Start fetching data from database...")
-            df = conn.query(query, params=params, ttl=0)
+            # FIX 2: Set ttl=600 to cache results for 10 minutes and prevent database spam
+            df = conn.query(query, params=params, ttl=600)
             logging.info("fetch data from database, %s rows found and columns are [%s]", len(df), df.columns)
         except Exception as e:
-            logging.error("Faild to fetch from database due to %s", e)
+            logging.error("Failed to fetch from database due to %s", e)
 
         if df.empty:
             return pd.DataFrame()
@@ -51,15 +55,18 @@ def load_data(target_date, mode):
 
         df['reading_time'] = pd.to_datetime(df['reading_time'])
 
-        df['hour'] = df['reading_time'].dt.hour
-        df['hour'] = df['hour'].astype(int)
-
         # Safe date conversion for Altair/PyArrow
         df['date_only'] = df['reading_time'].dt.normalize()
 
+        # Only extract the hour if we are in Hourly mode
+        if mode == "Hourly (Selected Date)":
+            df['hour'] = df['reading_time'].dt.hour
+            df['hour'] = df['hour'].astype(int)
+
         return df
     except Exception as e:
-        logging.error("Faild to load data due to %s", e)
+        logging.error("Failed to load data due to %s", e)
+        return pd.DataFrame()
 
 
 def sidebar():
@@ -91,24 +98,23 @@ def view_option(df, selected_date, view_mode):
             x_title = 'Hour of Day'
 
         else:
-            selected_month = selected_date.month
-            selected_year = selected_date.year
             st.subheader(f"Daily Averages for {selected_date.strftime('%B %Y')}")
 
-            df_filtered = df[(df['reading_time'].dt.month == selected_month) &
-                            (df['reading_time'].dt.year == selected_year)]
-
-            df_filtered = df_filtered.groupby('date_only')[['real', 'pred']].mean().reset_index()
+            # Since SQL already filtered and aggregated the data, we just copy it
+            df_filtered = df.copy()
             x_axis = 'date_only:T'
             x_title = 'Date'
-            logging.info("View option choosed is for %s the selected reading time is %s", view_mode, df_filtered['date_only'].head(1))
+
+            if not df_filtered.empty:
+                logging.info("View option choosed is for %s the selected reading time is %s", view_mode, df_filtered['date_only'].head(1))
+
         return {'df_filtered': df_filtered, "x_axis": x_axis, "x_title": x_title}
     except Exception as e:
-        logging.error("Faild to choose view type due to %s", e)
+        logging.error("Failed to choose view type due to %s", e)
         return {'df_filtered': pd.DataFrame(), "x_axis": "", "x_title": ""}
 
 
-def KPI_reading():
+def KPI_reading(df_filtered):
     avg_actual = int(df_filtered['real'].mean())
     max_actual = int(df_filtered['real'].max())
     avg_pred = int(df_filtered['pred'].mean())
@@ -121,7 +127,7 @@ def KPI_reading():
     col2.metric("Average Predicted PM2.5", f"{avg_pred} µg/m³", delta=f"{delta_val} from model", delta_color="inverse")
     col3.metric("Peak PM2.5 Reading", f"{max_actual} µg/m³")
 
-def actaul_chart(df_filtered, x_axis, x_title, moderate, risk):
+def actual_chart(df_filtered, x_axis, x_title, moderate, risk):
     try:
         st.markdown("**Actual PM2.5 Readings**")
 
@@ -160,13 +166,13 @@ def actaul_chart(df_filtered, x_axis, x_title, moderate, risk):
 
 
         # 3. Combine them using the '+' operator
-        actual_chart = (trend_line + colored_points + actual_area).properties(
+        chart = (trend_line + colored_points + actual_area).properties(
             height=350
         )
 
-        return actual_chart
+        return chart
     except Exception as e:
-        logging.error("faild to plot the acutal chart due to %s", e)
+        logging.error("Failed to plot the actual chart due to %s", e)
 
 
 def pred_chart(df_filtered, x_axis, x_title, moderate, risk):
@@ -205,14 +211,14 @@ def pred_chart(df_filtered, x_axis, x_title, moderate, risk):
             tooltip=[x_axis, 'pred']
         )
 
-        pred_chart = (pred_area + pred_trend_line + pred_colored_points).properties(
+        chart = (pred_area + pred_trend_line + pred_colored_points).properties(
             height=350
         )
 
-        return pred_chart
+        return chart
 
     except Exception as e:
-        logging.error("Faild to plot prediction chart due to %s", e)
+        logging.error("Failed to plot prediction chart due to %s", e)
 
 
 
@@ -236,29 +242,28 @@ if __name__ == "__main__":
         df = load_data(selected_date, view_mode)
 
     if df.empty:
-        st.warning("The Selected Date Doesn't have any data Choose another one")
+        st.warning("The Selected Date Doesn't have any data. Choose another one.")
         st.stop()
 
-    data =  view_option(df, selected_date, view_mode)
+    data = view_option(df, selected_date, view_mode)
     df_filtered = data['df_filtered']
     x_axis = data['x_axis']
     x_title = data['x_title']
 
     if not df_filtered.empty:
-        KPI_reading()
+        KPI_reading(df_filtered)
 
         st.divider()
 
         chart_col1, chart_col2 = st.columns(2)
 
         with chart_col1:
-            actual_chart = actaul_chart(df_filtered, x_axis, x_title, moderate, risk)
-            st.altair_chart(actual_chart, width='stretch')
+            chart_actual = actual_chart(df_filtered, x_axis, x_title, moderate, risk)
+            st.altair_chart(chart_actual, width='stretch')
 
         with chart_col2:
-
-            pred_chart = pred_chart(df_filtered, x_axis, x_title, moderate, risk)
-            st.altair_chart(pred_chart, width='stretch')
+            chart_pred = pred_chart(df_filtered, x_axis, x_title, moderate, risk)
+            st.altair_chart(chart_pred, width='stretch')
 
     else:
         st.info("No data available for the selected timeframe.")
