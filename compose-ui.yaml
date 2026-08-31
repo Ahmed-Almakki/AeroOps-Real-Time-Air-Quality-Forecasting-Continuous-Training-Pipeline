@@ -1,6 +1,6 @@
 services:
   ui:
-    image: ui:0.0.5
+    image: ui:0.0.2
 
     profiles: ["monitoring"]
 
